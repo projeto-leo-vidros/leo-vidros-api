@@ -58,24 +58,13 @@ public class PedidoServicoStrategy implements PedidoStrategy {
 
         servicoService.gerarCodigoSeNaoExistir(servico);
 
-        if (servico.getEtapa() != null) {
-            Etapa etapa = etapaService.buscarPorTipoAndEtapa(
-                    "PEDIDO",
-                    servico.getEtapa().getNome()
-            );
-            servico.setEtapa(etapa);
-        }
-
         servico.setPedido(pedido);
         pedido.setServico(servico);
 
         Status status = statusService.buscarOuCriarPorTipoENome("PEDIDO", "ATIVO");
         pedido.setStatus(status);
 
-        Etapa etapaInicial = etapaService.buscarPorTipoAndEtapa("PEDIDO", "AGUARDANDO AGENDA DE ORÇAMENTO");
-        if (etapaInicial == null) {
-            etapaInicial = etapaService.cadastrar(new Etapa("PEDIDO", "AGUARDANDO AGENDA DE ORÇAMENTO"));
-        }
+        Etapa etapaInicial = etapaService.buscarOuCriarPorTipoENome("PEDIDO", "AGUARDANDO AGENDA DE ORÇAMENTO");
         servico.setEtapa(etapaInicial);
 
         BigDecimal total = BigDecimal.valueOf(

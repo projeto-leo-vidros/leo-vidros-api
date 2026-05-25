@@ -1,6 +1,8 @@
 package com.project.extension.exception;
 
 import com.fasterxml.jackson.databind.exc.InvalidFormatException;
+import com.project.extension.common.api.ApiError;
+import com.project.extension.common.api.ApiResponse;
 import com.project.extension.exception.naoencontrado.base.NaoEncontradoException;
 import com.project.extension.exception.naopodesernegativo.base.NaoPodeSerNegativoException;
 import com.project.extension.service.LogService;
@@ -37,24 +39,22 @@ public class GlobalExceptionHandler {
 
     private final LogService logService;
 
-    private ResponseEntity<Object> buildErrorResponse(HttpStatus status, String error, String message,
-                                                      String exception, HttpServletRequest request) {
-        Map<String, Object> body = new HashMap<>();
-        body.put("timestamp", LocalDateTime.now());
+    private ResponseEntity<ApiResponse<Void>> buildErrorResponse(HttpStatus status,
+                                                                 String code,
+                                                                 String message,
+                                                                 Map<String, Object> details,
+                                                                 HttpServletRequest request) {
+        Map<String, Object> body = details != null ? new HashMap<>(details) : new HashMap<>();
+        body.put("timestamp", LocalDateTime.now().toString());
         body.put("status", status.value());
-        body.put("error", error);
-        body.put("message", message);
-        if (exception != null) {
-            body.put("exception", exception);
-        }
         body.put("path", request.getRequestURI());
-        return ResponseEntity.status(status).body(body);
+        return ResponseEntity.status(status).body(ApiResponse.error(new ApiError(code, message, body)));
     }
 
     // ── 400 ──────────────────────────────────────────────────────────────────
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<Object> handleValidation(MethodArgumentNotValidException ex, HttpServletRequest request) {
+    public ResponseEntity<ApiResponse<Void>> handleValidation(MethodArgumentNotValidException ex, HttpServletRequest request) {
         Map<String, String> campos = ex.getBindingResult().getFieldErrors().stream()
                 .collect(Collectors.toMap(
                         FieldError::getField,
@@ -63,18 +63,14 @@ public class GlobalExceptionHandler {
                 ));
         log.warn("Validação falhou nos campos: {}", campos);
 
-        Map<String, Object> body = new HashMap<>();
-        body.put("timestamp", LocalDateTime.now());
-        body.put("status", HttpStatus.BAD_REQUEST.value());
-        body.put("error", "Bad Request");
-        body.put("message", "Erro de validação nos campos enviados");
-        body.put("campos", campos);
-        body.put("path", request.getRequestURI());
-        return ResponseEntity.badRequest().body(body);
+        Map<String, Object> details = new HashMap<>();
+        details.put("campos", campos);
+        return buildErrorResponse(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR",
+                "Erro de validação nos campos enviados", details, request);
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
-    public ResponseEntity<Object> handleMessageNotReadable(HttpMessageNotReadableException ex, HttpServletRequest request) {
+    public ResponseEntity<ApiResponse<Void>> handleMessageNotReadable(HttpMessageNotReadableException ex, HttpServletRequest request) {
         String message = "Corpo da requisição inválido ou malformado";
         Throwable cause = ex.getCause();
         if (cause instanceof InvalidFormatException ife && ife.getTargetType() != null && ife.getTargetType().isEnum()) {
@@ -84,111 +80,114 @@ public class GlobalExceptionHandler {
             message = String.format("Valor '%s' inválido. Valores aceitos: %s", ife.getValue(), valoresValidos);
         }
         log.warn("Requisição ilegível em {}: {}", request.getRequestURI(), ex.getMessage());
-        return buildErrorResponse(HttpStatus.BAD_REQUEST, "Bad Request", message, null, request);
+        return buildErrorResponse(HttpStatus.BAD_REQUEST, "BAD_REQUEST", message, null, request);
     }
 
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
-    public ResponseEntity<Object> handleTypeMismatch(MethodArgumentTypeMismatchException ex, HttpServletRequest request) {
+    public ResponseEntity<ApiResponse<Void>> handleTypeMismatch(MethodArgumentTypeMismatchException ex, HttpServletRequest request) {
         String message = String.format("Parâmetro '%s' com valor '%s' é inválido", ex.getName(), ex.getValue());
         log.warn("Tipo inválido: {}", message);
-        return buildErrorResponse(HttpStatus.BAD_REQUEST, "Bad Request", message, null, request);
+        return buildErrorResponse(HttpStatus.BAD_REQUEST, "BAD_REQUEST", message, null, request);
     }
 
     @ExceptionHandler(MissingServletRequestParameterException.class)
-    public ResponseEntity<Object> handleMissingParam(MissingServletRequestParameterException ex, HttpServletRequest request) {
+    public ResponseEntity<ApiResponse<Void>> handleMissingParam(MissingServletRequestParameterException ex, HttpServletRequest request) {
         String message = String.format("Parâmetro obrigatório ausente: '%s'", ex.getParameterName());
         log.warn("Parâmetro ausente: {}", ex.getParameterName());
-        return buildErrorResponse(HttpStatus.BAD_REQUEST, "Bad Request", message, null, request);
+        return buildErrorResponse(HttpStatus.BAD_REQUEST, "MISSING_PARAMETER", message, null, request);
     }
 
     @ExceptionHandler(RegraNegocioException.class)
-    public ResponseEntity<Object> handleRegraNegocio(RegraNegocioException ex, HttpServletRequest request) {
+    public ResponseEntity<ApiResponse<Void>> handleRegraNegocio(RegraNegocioException ex, HttpServletRequest request) {
         logService.warning(String.format("Regra de Negócio violada (400). Erro: %s. Path: %s. Mensagem: %s",
                 ex.getClass().getSimpleName(), request.getRequestURI(), ex.getMessage()));
         log.warn("Regra de negócio: {}", ex.getMessage());
-        return buildErrorResponse(HttpStatus.BAD_REQUEST, "Bad Request", ex.getMessage(), null, request);
+        return buildErrorResponse(HttpStatus.BAD_REQUEST, "REGRA_NEGOCIO", ex.getMessage(), null, request);
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<Object> handleIllegalArgument(IllegalArgumentException ex, HttpServletRequest request) {
+    public ResponseEntity<ApiResponse<Void>> handleIllegalArgument(IllegalArgumentException ex, HttpServletRequest request) {
         log.warn("Argumento inválido em {}: {}", request.getRequestURI(), ex.getMessage());
-        return buildErrorResponse(HttpStatus.BAD_REQUEST, "Bad Request", ex.getMessage(), null, request);
+        return buildErrorResponse(HttpStatus.BAD_REQUEST, "ILLEGAL_ARGUMENT", ex.getMessage(), null, request);
     }
 
     @ExceptionHandler(IllegalStateException.class)
-    public ResponseEntity<Object> handleIllegalState(IllegalStateException ex, HttpServletRequest request) {
+    public ResponseEntity<ApiResponse<Void>> handleIllegalState(IllegalStateException ex, HttpServletRequest request) {
         log.warn("Estado inválido em {}: {}", request.getRequestURI(), ex.getMessage());
-        return buildErrorResponse(HttpStatus.BAD_REQUEST, "Bad Request", ex.getMessage(), null, request);
+        return buildErrorResponse(HttpStatus.BAD_REQUEST, "ILLEGAL_STATE", ex.getMessage(), null, request);
     }
 
     // ── 401 ──────────────────────────────────────────────────────────────────
 
     @ExceptionHandler({BadCredentialsException.class, AuthenticationException.class})
-    public ResponseEntity<Object> handleAuthentication(Exception ex, HttpServletRequest request) {
+    public ResponseEntity<ApiResponse<Void>> handleAuthentication(Exception ex, HttpServletRequest request) {
         log.warn("Falha de autenticação em {}: {}", request.getRequestURI(), ex.getMessage());
-        return buildErrorResponse(HttpStatus.UNAUTHORIZED, "Unauthorized", "Email ou senha inválidos.", null, request);
+        return buildErrorResponse(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "Email ou senha inválidos.", null, request);
     }
 
     // ── 403 ──────────────────────────────────────────────────────────────────
 
     @ExceptionHandler(AccessDeniedException.class)
-    public ResponseEntity<Object> handleAccessDenied(AccessDeniedException ex, HttpServletRequest request) {
+    public ResponseEntity<ApiResponse<Void>> handleAccessDenied(AccessDeniedException ex, HttpServletRequest request) {
         log.warn("Acesso negado em {}: {}", request.getRequestURI(), ex.getMessage());
-        return buildErrorResponse(HttpStatus.FORBIDDEN, "Forbidden", "Você não tem permissão para acessar este recurso.", null, request);
+        return buildErrorResponse(HttpStatus.FORBIDDEN, "FORBIDDEN",
+                "Você não tem permissão para acessar este recurso.", null, request);
     }
 
     @ExceptionHandler(SecurityException.class)
-    public ResponseEntity<Object> handleSecurity(SecurityException ex, HttpServletRequest request) {
+    public ResponseEntity<ApiResponse<Void>> handleSecurity(SecurityException ex, HttpServletRequest request) {
         log.warn("Segurança em {}: {}", request.getRequestURI(), ex.getMessage());
-        return buildErrorResponse(HttpStatus.FORBIDDEN, "Forbidden", ex.getMessage(), null, request);
+        return buildErrorResponse(HttpStatus.FORBIDDEN, "FORBIDDEN", ex.getMessage(), null, request);
     }
 
     // ── 404 ──────────────────────────────────────────────────────────────────
 
     @ExceptionHandler(NaoEncontradoException.class)
-    public ResponseEntity<Object> handleNaoEncontrado(NaoEncontradoException ex, HttpServletRequest request) {
+    public ResponseEntity<ApiResponse<Void>> handleNaoEncontrado(NaoEncontradoException ex, HttpServletRequest request) {
         logService.error(String.format("Recurso não encontrado (404). Erro: %s. Path: %s. Mensagem: %s",
                 ex.getClass().getSimpleName(), request.getRequestURI(), ex.getMessage()));
         log.warn("Não encontrado: {}", ex.getMessage());
-        return buildErrorResponse(HttpStatus.NOT_FOUND, "Not Found", ex.getMessage(), null, request);
+        return buildErrorResponse(HttpStatus.NOT_FOUND, "NOT_FOUND", ex.getMessage(), null, request);
     }
 
     // ── 405 ──────────────────────────────────────────────────────────────────
 
     @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
-    public ResponseEntity<Object> handleMethodNotSupported(HttpRequestMethodNotSupportedException ex, HttpServletRequest request) {
+    public ResponseEntity<ApiResponse<Void>> handleMethodNotSupported(HttpRequestMethodNotSupportedException ex, HttpServletRequest request) {
         String message = String.format("Método '%s' não é suportado para este endpoint", ex.getMethod());
         log.warn("Método não suportado em {}: {}", request.getRequestURI(), ex.getMethod());
-        return buildErrorResponse(HttpStatus.METHOD_NOT_ALLOWED, "Method Not Allowed", message, null, request);
+        return buildErrorResponse(HttpStatus.METHOD_NOT_ALLOWED, "METHOD_NOT_ALLOWED", message, null, request);
     }
 
     // ── 409 ──────────────────────────────────────────────────────────────────
 
     @ExceptionHandler(NaoPodeSerNegativoException.class)
-    public ResponseEntity<Object> handleNaoPodeSerNegativo(NaoPodeSerNegativoException ex, HttpServletRequest request) {
+    public ResponseEntity<ApiResponse<Void>> handleNaoPodeSerNegativo(NaoPodeSerNegativoException ex, HttpServletRequest request) {
         logService.warning(String.format("Conflito de regra de negócio (409). Erro: %s. Path: %s. Mensagem: %s",
                 ex.getClass().getSimpleName(), request.getRequestURI(), ex.getMessage()));
         log.warn("Valor negativo: {}", ex.getMessage());
-        return buildErrorResponse(HttpStatus.CONFLICT, "Conflict", ex.getMessage(), null, request);
+        return buildErrorResponse(HttpStatus.CONFLICT, "CONFLICT", ex.getMessage(), null, request);
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)
-    public ResponseEntity<Object> handleDataIntegrity(DataIntegrityViolationException ex, HttpServletRequest request) {
+    public ResponseEntity<ApiResponse<Void>> handleDataIntegrity(DataIntegrityViolationException ex, HttpServletRequest request) {
         logService.error(String.format("Violação de integridade (409). Path: %s. Mensagem: %s",
                 request.getRequestURI(), ex.getMessage()));
         log.warn("Violação de integridade em {}: {}", request.getRequestURI(), ex.getMessage());
-        return buildErrorResponse(HttpStatus.CONFLICT, "Conflict",
+        return buildErrorResponse(HttpStatus.CONFLICT, "DATA_INTEGRITY_VIOLATION",
                 "Conflito de dados: registro já existente ou violação de restrição.", null, request);
     }
 
     // ── 500 ──────────────────────────────────────────────────────────────────
 
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<Object> handleException(Exception ex, HttpServletRequest request) {
+    public ResponseEntity<ApiResponse<Void>> handleException(Exception ex, HttpServletRequest request) {
         logService.error(String.format("Erro não tratado (500). Exceção: %s. Path: %s. Mensagem: %s",
                 ex.getClass().getSimpleName(), request.getRequestURI(), ex.getMessage()));
         log.error("Erro não tratado: ", ex);
-        return buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, "Internal Server Error",
-                "Ocorreu um erro interno no servidor.", ex.getClass().getSimpleName(), request);
+        Map<String, Object> details = new HashMap<>();
+        details.put("exception", ex.getClass().getSimpleName());
+        return buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_SERVER_ERROR",
+                "Ocorreu um erro interno no servidor.", details, request);
     }
 }

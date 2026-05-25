@@ -24,7 +24,7 @@ public class StatusService {
     }
 
     public Status buscarPorTipoAndStatus(String tipo, String nome) {
-        return repository.findByTipoAndNome(tipo, nome).orElseThrow(() -> {
+        return repository.findFirstByTipoAndNome(tipo, nome).orElseThrow(() -> {
             String mensagem = String.format("Falha na busca: Status do tipo '%s' e nome '%s' não encontrado.", tipo, nome);
             logService.error(mensagem);
             log.error(mensagem);
@@ -33,7 +33,7 @@ public class StatusService {
     }
 
     public Status buscarOuCriarPorTipoENome(String tipo, String nome) {
-        return repository.findByTipoAndNome(tipo, nome)
+        return repository.findFirstByTipoAndNome(tipo, nome)
                 .orElseGet(() -> {
                     log.warn("Status não encontrado (tipo='{}', nome='{}'). Criando novo...", tipo, nome);
                     Status novo = new Status();
