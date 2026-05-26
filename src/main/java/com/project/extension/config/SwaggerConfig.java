@@ -1,5 +1,6 @@
 package com.project.extension.config;
 
+import com.project.extension.common.api.ApiResponse;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Contact;
 import io.swagger.v3.oas.models.info.Info;
@@ -12,7 +13,12 @@ import org.springdoc.core.customizers.OperationCustomizer;
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.method.HandlerMethod;
+
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 
 @Configuration
 public class SwaggerConfig {
@@ -43,6 +49,7 @@ public class SwaggerConfig {
     @Bean
     public OperationCustomizer envelopeApiResponses() {
         return (operation, handlerMethod) -> {
+            if (returnsApiResponseDirectly(handlerMethod)) return operation;
             if (operation.getResponses() == null) return operation;
             operation.getResponses().forEach((statusCode, apiResponse) -> {
                 boolean isSuccess = statusCode != null && statusCode.startsWith("2");
@@ -63,6 +70,25 @@ public class SwaggerConfig {
             });
             return operation;
         };
+    }
+
+    private boolean returnsApiResponseDirectly(HandlerMethod handlerMethod) {
+        if (handlerMethod == null) return false;
+        return isApiResponseType(handlerMethod.getMethod().getGenericReturnType());
+    }
+
+    private boolean isApiResponseType(Type type) {
+        if (type instanceof Class<?> cls) {
+            return ApiResponse.class.isAssignableFrom(cls);
+        }
+        if (type instanceof ParameterizedType pt && pt.getRawType() instanceof Class<?> rawCls) {
+            if (ApiResponse.class.isAssignableFrom(rawCls)) return true;
+            if (ResponseEntity.class.isAssignableFrom(rawCls)) {
+                Type[] args = pt.getActualTypeArguments();
+                return args.length > 0 && isApiResponseType(args[0]);
+            }
+        }
+        return false;
     }
 
     @SuppressWarnings({"rawtypes"})
