@@ -176,7 +176,7 @@ public class OrcamentoService {
         String eventoSse = "ERRO".equalsIgnoreCase(statusNome) ? "ERRO" : "FINALIZADO";
         sseService.enviarEvento(id, eventoSse);
 
-        if ("EM ANALISE".equalsIgnoreCase(statusNome)) {
+        if ("ENVIADO".equalsIgnoreCase(statusNome) || "EM ANALISE".equalsIgnoreCase(statusNome)) {
             avancarEtapaSeElegivel(orcamento.getPedido(), "ANÁLISE DO ORÇAMENTO");
         } else if ("APROVADO".equalsIgnoreCase(statusNome)) {
             avancarEtapaSeElegivel(orcamento.getPedido(), "ORÇAMENTO APROVADO");
@@ -212,7 +212,7 @@ public class OrcamentoService {
         ));
 
         if (request.statusNome() != null) {
-            if ("EM ANALISE".equalsIgnoreCase(request.statusNome())) {
+            if ("ENVIADO".equalsIgnoreCase(request.statusNome()) || "EM ANALISE".equalsIgnoreCase(request.statusNome())) {
                 avancarEtapaSeElegivel(atualizado.getPedido(), "ANÁLISE DO ORÇAMENTO");
             } else if ("APROVADO".equalsIgnoreCase(request.statusNome())) {
                 avancarEtapaSeElegivel(atualizado.getPedido(), "ORÇAMENTO APROVADO");

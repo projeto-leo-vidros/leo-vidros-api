@@ -3,6 +3,7 @@ package com.project.extension.service;
 import com.project.extension.entity.*;
 import com.project.extension.exception.RegraNegocioException;
 import com.project.extension.exception.naoencontrado.AgendamentoNaoEncontradoException;
+import com.project.extension.exception.naoencontrado.EtapaNaoEncontradoException;
 import com.project.extension.repository.AgendamentoRepository;
 import com.project.extension.strategy.agendamento.AgendamentoContext;
 import lombok.AllArgsConstructor;
@@ -136,6 +137,7 @@ public class AgendamentoService {
                 if (dataAgendamento != null && dataAgendamento.isAfter(LocalDate.now())) {
                     throw new RegraNegocioException("Não é possível iniciar um agendamento antes da data agendada.");
                 }
+                atualizarEtapaServico(destino.getServico(), "AGENDAMENTO EM EXECUÇÃO");
             }
 
             String nomeAtual = destino.getStatusAgendamento() != null ? destino.getStatusAgendamento().getNome() : "";
@@ -144,7 +146,16 @@ public class AgendamentoService {
                 destino.setStatusAgendamento(statusAtualizado);
                 repository.save(destino);
                 if (destino.getServico() != null && destino.getTipoAgendamento() == TipoAgendamento.ORCAMENTO) {
-                    reverterEtapaSeSemOrcamento(destino.getServico());
+                    if ("CANCELADO".equals(statusAtualizado.getNome())) {
+                        reverterEtapaSeSemOrcamento(destino.getServico());
+                    }
+                    // CONCLUÍDO: mantém "ORÇAMENTO AGENDADO" — OrcamentoService faz a próxima transição ao enviar o PDF
+                } else if (destino.getServico() != null && destino.getTipoAgendamento() == TipoAgendamento.SERVICO) {
+                    if ("CONCLUÍDO".equals(statusAtualizado.getNome()) || "CONCLUIDO".equals(statusAtualizado.getNome())) {
+                        concluirEtapaServico(destino.getServico());
+                    } else if ("CANCELADO".equals(statusAtualizado.getNome())) {
+                        reverterEtapaServicoSeCancelado(destino.getServico());
+                    }
                 }
                 Integer destinoId = destino.getId();
                 return destinoId != null ? repository.findById(destinoId).orElse(destino) : destino;
@@ -193,6 +204,7 @@ public class AgendamentoService {
                 if (dataAgendamento != null && dataAgendamento.isAfter(LocalDate.now())) {
                     throw new RegraNegocioException("Não é possível iniciar um agendamento antes da data agendada.");
                 }
+                atualizarEtapaServico(destino.getServico(), "AGENDAMENTO EM EXECUÇÃO");
             }
 
             String nomeAtual = destino.getStatusAgendamento() != null ? destino.getStatusAgendamento().getNome() : "";
@@ -200,10 +212,17 @@ public class AgendamentoService {
                 encerrarReservaAgendamento(destino, statusAtualizado.getNome());
                 if (destino.getServico() != null && destino.getTipoAgendamento() == TipoAgendamento.ORCAMENTO) {
                     destino.setStatusAgendamento(statusAtualizado);
-                    reverterEtapaSeSemOrcamento(destino.getServico());
-                } else if (destino.getServico() != null && destino.getTipoAgendamento() == TipoAgendamento.SERVICO
-                        && ("CONCLUÍDO".equals(statusAtualizado.getNome()) || "CONCLUIDO".equals(statusAtualizado.getNome()))) {
-                    concluirEtapaServico(destino.getServico());
+                    if ("CANCELADO".equals(statusAtualizado.getNome())) {
+                        reverterEtapaSeSemOrcamento(destino.getServico());
+                    }
+                    // CONCLUÍDO: mantém "ORÇAMENTO AGENDADO" — OrcamentoService faz a próxima transição
+                } else if (destino.getServico() != null && destino.getTipoAgendamento() == TipoAgendamento.SERVICO) {
+                    destino.setStatusAgendamento(statusAtualizado);
+                    if ("CONCLUÍDO".equals(statusAtualizado.getNome()) || "CONCLUIDO".equals(statusAtualizado.getNome())) {
+                        concluirEtapaServico(destino.getServico());
+                    } else if ("CANCELADO".equals(statusAtualizado.getNome())) {
+                        reverterEtapaServicoSeCancelado(destino.getServico());
+                    }
                 }
             }
 
@@ -390,13 +409,13 @@ public class AgendamentoService {
         agendamento.setStatusAgendamento(statusCancelado);
         repository.save(agendamento);
 
-        if (agendamento.getServico() != null) {
-            try {
-                Etapa etapaReagendar = etapaService.buscarPorTipoAndEtapa("PEDIDO", "REAGENDAR");
-                agendamento.getServico().setEtapa(etapaReagendar);
-                servicoService.editar(agendamento.getServico(), agendamento.getServico().getId());
-            } catch (Exception e) {
-                log.warn("Etapa REAGENDAR não encontrada, mantendo etapa atual do serviço.");
+        Servico servico = agendamento.getServico();
+        if (servico != null) {
+            TipoAgendamento tipo = agendamento.getTipoAgendamento();
+            if (tipo == TipoAgendamento.ORCAMENTO) {
+                reverterEtapaSeSemOrcamento(servico);
+            } else if (tipo == TipoAgendamento.SERVICO) {
+                reverterEtapaServicoSeCancelado(servico);
             }
         }
 
@@ -423,14 +442,32 @@ public class AgendamentoService {
         }
     }
 
+    private void atualizarEtapaServico(Servico servico, String nomeEtapa) {
+        if (servico == null) return;
+        try {
+            Etapa etapa;
+            try {
+                etapa = etapaService.buscarPorTipoAndEtapa("PEDIDO", nomeEtapa);
+            } catch (EtapaNaoEncontradoException e) {
+                log.warn("Etapa '{}' não encontrada — realizando cadastro automático.", nomeEtapa);
+                etapa = etapaService.cadastrar(new Etapa("PEDIDO", nomeEtapa));
+            }
+            servico.setEtapa(etapa);
+            servicoService.editar(servico, servico.getId());
+            log.info("Etapa do Serviço ID {} atualizada para '{}'.", servico.getId(), nomeEtapa);
+        } catch (Exception e) {
+            log.warn("Não foi possível atualizar etapa do serviço ID {} para '{}': {}", servico.getId(), nomeEtapa, e.getMessage());
+        }
+    }
+
     private void reverterEtapaServicoSeCancelado(Servico servico) {
         List<Agendamento> servicosAtivos = repository.findAgendamentosServicoAtivosByServico(servico.getId());
         if (servicosAtivos.isEmpty()) {
             try {
-                Etapa etapaAprovada = etapaService.buscarPorTipoAndEtapa("PEDIDO", "ORÇAMENTO APROVADO");
-                servico.setEtapa(etapaAprovada);
+                Etapa etapaAguardando = etapaService.buscarPorTipoAndEtapa("PEDIDO", "AGUARDANDO AGENDA DE SERVIÇO/INSTALAÇÃO");
+                servico.setEtapa(etapaAguardando);
                 servicoService.editar(servico, servico.getId());
-                log.info("Serviço ID {} revertido para ORÇAMENTO APROVADO após cancelamento de agendamento de serviço.", servico.getId());
+                log.info("Serviço ID {} revertido para AGUARDANDO AGENDA DE SERVIÇO/INSTALAÇÃO após cancelamento de agendamento de serviço.", servico.getId());
             } catch (Exception e) {
                 log.warn("Não foi possível reverter etapa do serviço ID {}: {}", servico.getId(), e.getMessage());
             }
@@ -443,10 +480,10 @@ public class AgendamentoService {
                 .toList();
         if (orcamentosAtivos.isEmpty()) {
             try {
-                Etapa etapaPendente = etapaService.buscarPorTipoAndEtapa("PEDIDO", "PENDENTE");
-                servico.setEtapa(etapaPendente);
+                Etapa etapaAguardando = etapaService.buscarPorTipoAndEtapa("PEDIDO", "AGUARDANDO AGENDA DE ORÇAMENTO");
+                servico.setEtapa(etapaAguardando);
                 servicoService.editar(servico, servico.getId());
-                log.info("Serviço ID {} revertido para PENDENTE após perda de agendamento de orçamento.", servico.getId());
+                log.info("Serviço ID {} revertido para AGUARDANDO AGENDA DE ORÇAMENTO após perda de agendamento de orçamento.", servico.getId());
             } catch (Exception e) {
                 log.warn("Não foi possível reverter etapa do serviço ID {}: {}", servico.getId(), e.getMessage());
             }

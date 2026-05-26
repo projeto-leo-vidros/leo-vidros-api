@@ -18,6 +18,7 @@ import java.text.Normalizer;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Component("PEDIDO_SERVICO")
 @AllArgsConstructor
@@ -58,22 +59,14 @@ public class PedidoServicoStrategy implements PedidoStrategy {
 
         servicoService.gerarCodigoSeNaoExistir(servico);
 
-        if (servico.getEtapa() != null) {
-            Etapa etapa = etapaService.buscarPorTipoAndEtapa(
-                    "PEDIDO",
-                    servico.getEtapa().getNome()
-            );
-            servico.setEtapa(etapa);
-        }
-
         servico.setPedido(pedido);
         pedido.setServico(servico);
 
-        Status status = statusService.buscarPorTipoAndStatus(
-                pedido.getStatus().getTipo(),
-                pedido.getStatus().getNome()
-        );
+        Status status = statusService.buscarOuCriarPorTipoENome("PEDIDO", "ATIVO");
         pedido.setStatus(status);
+
+        Etapa etapaInicial = etapaService.buscarOuCriarPorTipoENome("PEDIDO", "AGUARDANDO AGENDA DE ORÇAMENTO");
+        servico.setEtapa(etapaInicial);
 
         BigDecimal total = BigDecimal.valueOf(
                 servico.getPrecoBase() != null ? servico.getPrecoBase() : 0.0
@@ -165,10 +158,11 @@ public class PedidoServicoStrategy implements PedidoStrategy {
             antigo.setEtapa(etapa);
         }
 
-        Status status = statusService.buscarPorTipoAndStatus(
-                destino.getStatus().getTipo(),
-                destino.getStatus().getNome()
-        );
+        String nomeStatus = destino.getStatus() != null ? destino.getStatus().getNome() : "ATIVO";
+        if (!Set.of("ATIVO", "INATIVO", "CANCELADO").contains(nomeStatus)) {
+            nomeStatus = "ATIVO";
+        }
+        Status status = statusService.buscarOuCriarPorTipoENome("PEDIDO", nomeStatus);
         origem.setStatus(status);
 
         BigDecimal total = BigDecimal.valueOf(antigo.getPrecoBase() != null ? antigo.getPrecoBase() : 0.0);

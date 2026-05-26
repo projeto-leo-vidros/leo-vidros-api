@@ -7,6 +7,7 @@ import com.project.extension.entity.Servico;
 import com.project.extension.entity.Status;
 import com.project.extension.entity.TipoAgendamento;
 import com.project.extension.exception.RegraNegocioException;
+import com.project.extension.exception.naoencontrado.EtapaNaoEncontradoException;
 import com.project.extension.repository.ItemPedidoRepository;
 import com.project.extension.repository.OrcamentoRepository;
 import com.project.extension.repository.PedidoRepository;
@@ -80,8 +81,15 @@ public class PedidoConclusaoService {
     @Transactional
     public int corrigirPedidosServicoComConclusaoInvalida() {
         List<Pedido> pedidosServico = pedidoRepository.findByServicoIsNotNull();
-        Etapa etapaConcluido = etapaService.buscarPorTipoAndEtapa("PEDIDO", "CONCLUÍDO");
-        Etapa etapaPendente = etapaService.buscarPorTipoAndEtapa("PEDIDO", "PENDENTE");
+        Etapa etapaConcluido;
+        Etapa etapaAguardando;
+        try {
+            etapaConcluido = etapaService.buscarPorTipoAndEtapa("PEDIDO", "CONCLUÍDO");
+            etapaAguardando = etapaService.buscarPorTipoAndEtapa("PEDIDO", "AGUARDANDO AGENDA DE ORÇAMENTO");
+        } catch (EtapaNaoEncontradoException e) {
+            log.warn("Etapas de referência ausentes — correção de pedidos ignorada: {}", e.getMessage());
+            return 0;
+        }
         Status statusAtivo = statusService.buscarOuCriarPorTipoENome("PEDIDO", "ATIVO");
         Status statusInativo = statusService.buscarOuCriarPorTipoENome("PEDIDO", "INATIVO");
 
@@ -131,12 +139,12 @@ public class PedidoConclusaoService {
                 pedido.setAtivo(true);
                 mudou = true;
             }
-            if (pedido.getStatus() == null || !"ATIVO".equals(normalizar(pedido.getStatus().getNome()))) {
+            if (pedido.getStatus() == null || isStatusConcluido(normalizar(pedido.getStatus().getNome()))) {
                 pedido.setStatus(statusAtivo);
                 mudou = true;
             }
             if (servico.getEtapa() == null || etapaConcluida) {
-                servico.setEtapa(etapaPendente);
+                servico.setEtapa(etapaAguardando);
                 mudou = true;
             }
 
@@ -166,7 +174,11 @@ public class PedidoConclusaoService {
 
     private boolean isStatusEncerrado(Agendamento agendamento) {
         String status = normalizar(nomeStatusAgendamento(agendamento));
-        return "CANCELADO".equals(status) || "INATIVO".equals(status);
+        return "CANCELADO".equals(status);
+    }
+
+    private boolean isStatusConcluido(String statusNormalizado) {
+        return "CONCLUIDO".equals(statusNormalizado) || "INATIVO".equals(statusNormalizado);
     }
 
     private String nomeStatusAgendamento(Agendamento agendamento) {

@@ -307,7 +307,7 @@ INSERT IGNORE INTO item_pedido (pedido_id, estoque_id, quantidade_solicitada, pr
 -- Os 5 ultimos (pedidos 6-10) em APROVADO
 -- =============================================================
 
-INSERT IGNORE INTO orcamento (pedido_id, cliente_id, status_id, numero_orcamento, data_orcamento, observacoes, prazo_instalacao, garantia, forma_pagamento, valor_subtotal, valor_desconto, valor_total, pdf_path, status_fila, ativo) VALUES
+INSERT INTO orcamento (pedido_id, cliente_id, status_id, numero_orcamento, data_orcamento, observacoes, prazo_instalacao, garantia, forma_pagamento, valor_subtotal, valor_desconto, valor_total, pdf_path, status_fila, ativo) VALUES
 -- Orçamentos em RASCUNHO (aguardando aprovação do cliente)
 (1, 1, 13, 'ORC-2026-00001', '2026-04-20', 'Fachada envidracada para bloco comercial. Medicoes confirmadas em visita tecnica. Inclui consultoria de cor e acabamento.', '15 dias', '5 anos vidro', 'A DEFINIR', 2295.00, 150.00, 2145.00, NULL, 'PENDENTE', TRUE),
 (2, 2, 13, 'ORC-2026-00002', '2026-04-21', 'Espelho com acabamento anti-umidade para banheiro suite. Medidas: 1,50m x 1,80m. Instalacao inclusa.', '7 dias', '3 anos', 'A DEFINIR', 187.50, 0.00, 187.50, NULL, 'PENDENTE', TRUE),
@@ -328,52 +328,52 @@ INSERT IGNORE INTO orcamento (pedido_id, cliente_id, status_id, numero_orcamento
 -- =============================================================
 
 -- Orçamento 1: Fachada Envidracada
-INSERT IGNORE INTO orcamento_item (orcamento_id, produto_id, descricao, quantidade, preco_unitario, desconto, observacao, ordem) VALUES
+INSERT INTO orcamento_item (orcamento_id, produto_id, descricao, quantidade, preco_unitario, desconto, observacao, ordem) VALUES
                                                                                                                               (1, 2, 'Vidro Temperado 8mm - Incolor', 15.00, 120.00, 0.00, 'Alta resistência mecânica e térmica. Certificado de tempera conforme NBR.', 1),
                                                                                                                               (1, 8, 'Perfil Aluminio 6m - Anodizado', 9.00, 45.00, 0.00, 'Perfis estruturais para sustentacao da fachada. Acabamento anodizado cores claras.', 2),
                                                                                                                               (1, 9, 'Silicone Estrutural 600ml', 12.00, 32.00, 150.00, 'Vedacao estrutural dos vidros — cartuchos especializados com pistola mecanica.', 3);
 
 -- Orçamento 2: Espelho Banheiro
-INSERT IGNORE INTO orcamento_item (orcamento_id, produto_id, descricao, quantidade, preco_unitario, desconto, observacao, ordem) VALUES
+INSERT INTO orcamento_item (orcamento_id, produto_id, descricao, quantidade, preco_unitario, desconto, observacao, ordem) VALUES
     (2, 5, 'Espelho Cristal 4mm - Banheiro', 2.50, 75.00, 0.00, 'Espelho com tratamento anti-umidade nas bordas. Corte especial conforme medicoes.', 1);
 
 -- Orçamento 3: Box e Divisoria
-INSERT IGNORE INTO orcamento_item (orcamento_id, produto_id, descricao, quantidade, preco_unitario, desconto, observacao, ordem) VALUES
+INSERT INTO orcamento_item (orcamento_id, produto_id, descricao, quantidade, preco_unitario, desconto, observacao, ordem) VALUES
                                                                                                                               (3, 7, 'Box Banheiro Inox 8mm - Completo', 1.00, 850.00, 0.00, 'Box completo com piso resinado, vidro temperado 8mm e perfilaria em inox 304.', 1),
                                                                                                                               (3, 2, 'Vidro Temperado 8mm - Divisoria', 5.00, 120.00, 100.00, 'Vidro para divisoria adicional no quarto — corte sob medida, pontas polidas.', 2);
 
 -- Orçamento 4: Substituicao de Vidros
-INSERT IGNORE INTO orcamento_item (orcamento_id, produto_id, descricao, quantidade, preco_unitario, desconto, observacao, ordem) VALUES
+INSERT INTO orcamento_item (orcamento_id, produto_id, descricao, quantidade, preco_unitario, desconto, observacao, ordem) VALUES
     (4, 1, 'Vidro Temperado 6mm - Incolor', 3.00, 95.00, 0.00, 'Reposicao conforme especificacoes originais. Entrega urgente do vidro — prazo 48h.', 1);
 
 -- Orçamento 5: Aplicacao Pelicula Solar
-INSERT IGNORE INTO orcamento_item (orcamento_id, produto_id, descricao, quantidade, preco_unitario, desconto, observacao, ordem) VALUES
+INSERT INTO orcamento_item (orcamento_id, produto_id, descricao, quantidade, preco_unitario, desconto, observacao, ordem) VALUES
     (5, 10, 'Pelicula Protecao Solar - Rolo 1.52m', 1.50, 360.00, 40.00, 'Controle solar 40% - reduz consumo AR em ate 40%. Protege mobiliario de UV. Aplicacao profissional inclusa.', 1);
 
 -- Orçamento 6: Guarda-corpo Vidro
-INSERT IGNORE INTO orcamento_item (orcamento_id, produto_id, descricao, quantidade, preco_unitario, desconto, observacao, ordem) VALUES
+INSERT INTO orcamento_item (orcamento_id, produto_id, descricao, quantidade, preco_unitario, desconto, observacao, ordem) VALUES
                                                                                                                               (6, 2, 'Vidro Temperado 8mm - Guarda-corpo', 8.00, 130.00, 0.00, 'Vidro fumê 8mm temperado - alta segurança. Amostra entregue ao cliente aprovada.', 1),
                                                                                                                               (6, 8, 'Perfil Aluminio Inox - Estrutura', 6.00, 50.00, 0.00, 'Perfis especiais para guarda-corpo em acabamento inox polido.', 2),
                                                                                                                               (6, 9, 'Silicone Estrutural - Vedacao', 5.00, 38.00, 0.00, 'Silicone cinza estrutural — estrutura resistira cargas de impacto conforme norma.', 3);
 
 -- Orçamento 7: Porta Vidro Temperado
-INSERT IGNORE INTO orcamento_item (orcamento_id, produto_id, descricao, quantidade, preco_unitario, desconto, observacao, ordem) VALUES
+INSERT INTO orcamento_item (orcamento_id, produto_id, descricao, quantidade, preco_unitario, desconto, observacao, ordem) VALUES
                                                                                                                               (7, 2, 'Vidro Temperado 8mm - Porta', 3.00, 135.00, 0.00, 'Vidro fumê 8mm para porta pivotante — acabamento espelho ouro fosco confirmado com arquiteto.', 1),
                                                                                                                               (7, 8, 'Perfil Aluminio Ouro Fosco', 4.00, 52.00, 0.00, 'Perfilaria completa para porta pivotante — acabamento especial conforme request cliente.', 2),
                                                                                                                               (7, 9, 'Silicone Estrutural', 3.00, 38.00, 0.00, 'Silicone cinza para estrutura de sustentacao da porta.', 3);
 
 -- Orçamento 8: Cobertura Vidro Laminado
-INSERT IGNORE INTO orcamento_item (orcamento_id, produto_id, descricao, quantidade, preco_unitario, desconto, observacao, ordem) VALUES
+INSERT INTO orcamento_item (orcamento_id, produto_id, descricao, quantidade, preco_unitario, desconto, observacao, ordem) VALUES
                                                                                                                               (8, 3, 'Vidro Laminado 6.6mm - Cobertura', 10.00, 125.00, 0.00, 'Vidro laminado PVB incolor 6.6mm — máxima segurança. Cortinas de aluminio em cobertura lateral.', 1),
                                                                                                                               (8, 8, 'Perfil Aluminio - Estrutura Cobertura', 12.00, 52.00, 0.00, 'Perfis estruturais reforçados para sustentacao de vidro laminado — carga uniforme.', 2),
                                                                                                                               (8, 9, 'Silicone Estrutural - Impermeabilizacao', 8.00, 38.00, 0.00, 'Silicone branco estrutural para vedacao e impermeabilizacao total da cobertura.', 3);
 
 -- Orçamento 9: Espelho Bisote Sala
-INSERT IGNORE INTO orcamento_item (orcamento_id, produto_id, descricao, quantidade, preco_unitario, desconto, observacao, ordem) VALUES
+INSERT INTO orcamento_item (orcamento_id, produto_id, descricao, quantidade, preco_unitario, desconto, observacao, ordem) VALUES
     (9, 5, 'Espelho Bisote 4mm - Premium', 2.50, 85.00, 0.00, 'Espelho bisote premium com borda polida 45 graus — acabamento espelhado em toda extensao.', 1);
 
 -- Orçamento 10: Fachada Frameless
-INSERT IGNORE INTO orcamento_item (orcamento_id, produto_id, descricao, quantidade, preco_unitario, desconto, observacao, ordem) VALUES
+INSERT INTO orcamento_item (orcamento_id, produto_id, descricao, quantidade, preco_unitario, desconto, observacao, ordem) VALUES
                                                                                                                               (10, 2, 'Vidro Temperado 8mm - Fachada Frameless', 20.00, 135.00, 0.00, 'Vidro incolor temperado 8mm — fachada frameless arquitetonicamente diferenciada. Certificação NBR 7199 e 7210.', 1),
                                                                                                                               (10, 8, 'Perfil Aluminio Discreto - Sistema Frameless', 30.00, 52.00, 0.00, 'Sistema frameless com perfilaria discreta e inovadora — fixações ocultas para impacto visual.', 2),
                                                                                                                               (10, 9, 'Silicone Estrutural - Vedacao Fachada', 15.00, 38.00, 0.00, 'Silicone estrutural cinza de alta performance para vedacao estrutural da fachada.', 3);
@@ -383,7 +383,7 @@ INSERT IGNORE INTO orcamento_item (orcamento_id, produto_id, descricao, quantida
 -- Registra movimentações de entrada e saida de produtos
 -- =============================================================
 
-INSERT IGNORE INTO historico_estoque (estoque_id, usuario_id, tipo_movimentacao, quantidade, quantidade_atual, observacao, pedido_id, origem, motivo_perda, data_movimentacao) VALUES
+INSERT INTO historico_estoque (estoque_id, usuario_id, tipo_movimentacao, quantidade, quantidade_atual, observacao, pedido_id, origem, motivo_perda, data_movimentacao) VALUES
 -- Entradas iniciais (criacao do estoque base)
 (1, 1, 'ENTRADA', 50.00, 50.00, 'Entrada inicial de estoque — Vidro Temperado 6mm', NULL, 'MANUAL', NULL, '2026-04-01 08:00:00'),
 (2, 1, 'ENTRADA', 40.00, 40.00, 'Entrada inicial de estoque — Vidro Temperado 8mm', NULL, 'MANUAL', NULL, '2026-04-01 08:15:00'),
@@ -422,7 +422,7 @@ INSERT IGNORE INTO historico_estoque (estoque_id, usuario_id, tipo_movimentacao,
 -- Registros de eventos e operações importantes
 -- =============================================================
 
-INSERT IGNORE INTO log (data_hora, id_categoria, mensagem) VALUES
+INSERT INTO log (data_hora, id_categoria, mensagem) VALUES
                                                         ('2026-04-01 08:00:00', 1, 'Sistema inicializado com sucesso — banco de dados e tabelas criadas.'),
                                                         ('2026-04-01 08:15:00', 1, 'Estoque inicial carregado — 10 linhas de produtos com metricas de minimo e maximo.'),
                                                         ('2026-04-01 10:00:00', 5, 'Usuario admin criado: admin@leovidros.com.br'),

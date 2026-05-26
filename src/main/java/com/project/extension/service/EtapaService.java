@@ -27,8 +27,21 @@ public class EtapaService {
         return salvo;
     }
 
+    public Etapa buscarOuCriarPorTipoENome(String tipo, String nome) {
+        return repository.findFirstByTipoAndNome(tipo, nome)
+                .orElseGet(() -> {
+                    log.warn("Etapa não encontrada (tipo='{}', nome='{}'). Criando nova...", tipo, nome);
+                    Etapa nova = new Etapa(tipo, nome);
+                    Etapa salvo = repository.save(nova);
+                    logService.warning(String.format(
+                            "Nova Etapa criada implicitamente. ID: %d, Tipo: '%s', Nome: '%s'.",
+                            salvo.getId(), salvo.getTipo(), salvo.getNome()));
+                    return salvo;
+                });
+    }
+
     public Etapa buscarPorTipoAndEtapa(String tipo, String nome) {
-        var etapaExata = repository.findByTipoAndNome(tipo, nome);
+        var etapaExata = repository.findFirstByTipoAndNome(tipo, nome);
         if (etapaExata.isPresent()) {
             return etapaExata.get();
         }

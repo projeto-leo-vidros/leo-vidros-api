@@ -46,10 +46,11 @@ public class AgendamentoServicoStrategy implements AgendamentoStrategy {
             throw new RegraNegocioException("Serviço não encontrado para criar o agendamento.");
         }
 
-        if (!"ORCAMENTO APROVADO".equals(normalizarTexto(etapaAtual))) {
+        String etapaNorm = normalizarTexto(etapaAtual);
+        if (!"ORCAMENTO APROVADO".equals(etapaNorm) && !"AGUARDANDO AGENDA DE SERVICO/INSTALACAO".equals(etapaNorm)) {
             throw new RegraNegocioException(
                     String.format(
-                            "Só é possível agendar serviço quando a etapa estiver como ORÇAMENTO APROVADO. Etapa atual: %s.",
+                            "Só é possível agendar serviço quando a etapa estiver como ORÇAMENTO APROVADO ou AGUARDANDO AGENDA DE SERVIÇO/INSTALAÇÃO. Etapa atual: %s.",
                             etapaAtual == null || etapaAtual.isBlank() ? "não definida" : etapaAtual
                     )
             );
@@ -132,8 +133,6 @@ public class AgendamentoServicoStrategy implements AgendamentoStrategy {
         servicoSalvo.setAtivo(true);
         if (servicoSalvo.getPedido() != null) {
             servicoSalvo.getPedido().setAtivo(true);
-            Status statusAtivoPedido = statusService.buscarPorTipoAndStatus("PEDIDO", "ATIVO");
-            servicoSalvo.getPedido().setStatus(statusAtivoPedido);
         }
 
         servicoSalvo.setEtapa(etapaPedido);
