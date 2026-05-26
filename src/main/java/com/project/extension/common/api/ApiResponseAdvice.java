@@ -41,7 +41,6 @@ public class ApiResponseAdvice implements ResponseBodyAdvice<Object> {
                                   Class<? extends HttpMessageConverter<?>> selectedConverterType,
                                   ServerHttpRequest request,
                                   ServerHttpResponse response) {
-        if (body == null) return null;
         if (body instanceof ApiResponse<?>) return body;
         if (body instanceof byte[]) return body;
         if (body instanceof Resource) return body;
@@ -54,7 +53,16 @@ public class ApiResponseAdvice implements ResponseBodyAdvice<Object> {
         }
 
         int statusCode = resolveStatusCode(response);
+        // 204 / 304 não carregam corpo por definição — não envelopar.
+        if (statusCode == 204 || statusCode == 304) return body;
+
         boolean isError = statusCode >= 400;
+
+        if (body == null) {
+            return isError
+                    ? ApiResponse.error("HTTP_" + statusCode, messageForStatus(statusCode))
+                    : ApiResponse.success(null);
+        }
 
         if (body instanceof String s) {
             response.getHeaders().setContentType(MediaType.APPLICATION_JSON);

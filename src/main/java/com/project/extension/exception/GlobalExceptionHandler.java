@@ -59,7 +59,7 @@ public class GlobalExceptionHandler {
                 .collect(Collectors.toMap(
                         FieldError::getField,
                         FieldError::getDefaultMessage,
-                        (m1, m2) -> m1
+                        (m1, m2) -> m1 == null ? m2 : (m2 == null ? m1 : m1 + "; " + m2)
                 ));
         log.warn("Validação falhou nos campos: {}", campos);
 
