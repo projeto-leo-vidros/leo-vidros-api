@@ -51,14 +51,15 @@ public class AuthControllerImpl implements AuthControllerDoc {
             String token = gerarToken(usuario);
 
             boolean isProduction = "production".equals(environment);
-            
-            if (isProduction) {
-                httpResponse.setHeader("Set-Cookie", 
-                    String.format("authToken=%s; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=%d", 
+            boolean isSecureRequest = isHttpsRequest(httpRequest);
+
+            if (isProduction && isSecureRequest) {
+                httpResponse.setHeader("Set-Cookie",
+                    String.format("authToken=%s; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=%d",
                         token, 24 * 60 * 60));
             } else {
-                httpResponse.setHeader("Set-Cookie", 
-                    String.format("authToken=%s; HttpOnly; SameSite=Strict; Path=/; Max-Age=%d", 
+                httpResponse.setHeader("Set-Cookie",
+                    String.format("authToken=%s; HttpOnly; SameSite=Strict; Path=/; Max-Age=%d",
                         token, 24 * 60 * 60));
             }
 
@@ -81,14 +82,14 @@ public class AuthControllerImpl implements AuthControllerDoc {
     }
     
     @Override
-    public ResponseEntity<String> logout(HttpServletResponse httpResponse) {
+    public ResponseEntity<String> logout(HttpServletResponse httpResponse, HttpServletRequest httpRequest) {
         boolean isProduction = "production".equals(environment);
-        
-        if (isProduction) {
-            httpResponse.setHeader("Set-Cookie", 
+
+        if (isProduction && isHttpsRequest(httpRequest)) {
+            httpResponse.setHeader("Set-Cookie",
                 "authToken=; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=0");
         } else {
-            httpResponse.setHeader("Set-Cookie", 
+            httpResponse.setHeader("Set-Cookie",
                 "authToken=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0");
         }
         
@@ -117,5 +118,13 @@ public class AuthControllerImpl implements AuthControllerDoc {
             return request.getRemoteAddr();
         }
         return xfHeader.split(",")[0];
+    }
+
+    private boolean isHttpsRequest(HttpServletRequest request) {
+        if (request.isSecure()) {
+            return true;
+        }
+        String forwardedProto = request.getHeader("X-Forwarded-Proto");
+        return forwardedProto != null && forwardedProto.equalsIgnoreCase("https");
     }
 }

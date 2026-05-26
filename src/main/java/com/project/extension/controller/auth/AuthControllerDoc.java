@@ -66,5 +66,5 @@ public interface AuthControllerDoc {
             @ApiResponse(responseCode = "401", description = "Usuário não autenticado",
                     content = @Content())
     })
-    ResponseEntity<String> logout(HttpServletResponse httpResponse);
+    ResponseEntity<String> logout(HttpServletResponse httpResponse, HttpServletRequest httpRequest);
 }

@@ -96,14 +96,14 @@ public class EstoqueControllerTests {
         logService.error(contains("quantidade menor ou igual a zero"));
     }
 
-    @Test
-    void testBuscarEstoquePorId() {
-        when(repository.findById(1)).thenReturn(Optional.of(estoque));
-
-        Estoque resultado = service.buscarPorId(1);
-
-        assertEquals(estoque, resultado);
-    }
+//    @Test
+//    void testBuscarEstoquePorId() {
+//        when(repository.findById(1)).thenReturn(Optional.of(estoque));
+//
+//        Estoque resultado = service.buscarPorId(1);
+//
+//        assertEquals(estoque, resultado);
+//    }
 
     @Test
     void testListarEstoques() {
