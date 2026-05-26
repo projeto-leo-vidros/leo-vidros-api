@@ -2,6 +2,7 @@ package com.project.extension.strategy.agendamento;
 
 import com.project.extension.entity.*;
 import com.project.extension.exception.RegraNegocioException;
+import com.project.extension.exception.naoencontrado.EtapaNaoEncontradoException;
 import com.project.extension.repository.PedidoRepository;
 import com.project.extension.service.*;
 import lombok.AllArgsConstructor;
@@ -81,8 +82,11 @@ public class AgendamentoOrcamentoStrategy implements AgendamentoStrategy {
                 agendamento.setFuncionarios(funcionariosSalvos);
             }
 
-            Etapa etapa = etapaService.buscarPorTipoAndEtapa("PEDIDO", "ORÇAMENTO AGENDADO");
-            if (etapa == null) {
+            Etapa etapa;
+            try {
+                etapa = etapaService.buscarPorTipoAndEtapa("PEDIDO", "ORÇAMENTO AGENDADO");
+            } catch (EtapaNaoEncontradoException e) {
+                log.warn("Etapa 'ORÇAMENTO AGENDADO' não encontrada — realizando cadastro automático.");
                 etapa = etapaService.cadastrar(new Etapa("PEDIDO", "ORÇAMENTO AGENDADO"));
             }
 

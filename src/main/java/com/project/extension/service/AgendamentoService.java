@@ -3,6 +3,7 @@ package com.project.extension.service;
 import com.project.extension.entity.*;
 import com.project.extension.exception.RegraNegocioException;
 import com.project.extension.exception.naoencontrado.AgendamentoNaoEncontradoException;
+import com.project.extension.exception.naoencontrado.EtapaNaoEncontradoException;
 import com.project.extension.repository.AgendamentoRepository;
 import com.project.extension.strategy.agendamento.AgendamentoContext;
 import lombok.AllArgsConstructor;
@@ -216,6 +217,7 @@ public class AgendamentoService {
                     }
                     // CONCLUÍDO: mantém "ORÇAMENTO AGENDADO" — OrcamentoService faz a próxima transição
                 } else if (destino.getServico() != null && destino.getTipoAgendamento() == TipoAgendamento.SERVICO) {
+                    destino.setStatusAgendamento(statusAtualizado);
                     if ("CONCLUÍDO".equals(statusAtualizado.getNome()) || "CONCLUIDO".equals(statusAtualizado.getNome())) {
                         concluirEtapaServico(destino.getServico());
                     } else if ("CANCELADO".equals(statusAtualizado.getNome())) {
@@ -443,8 +445,11 @@ public class AgendamentoService {
     private void atualizarEtapaServico(Servico servico, String nomeEtapa) {
         if (servico == null) return;
         try {
-            Etapa etapa = etapaService.buscarPorTipoAndEtapa("PEDIDO", nomeEtapa);
-            if (etapa == null) {
+            Etapa etapa;
+            try {
+                etapa = etapaService.buscarPorTipoAndEtapa("PEDIDO", nomeEtapa);
+            } catch (EtapaNaoEncontradoException e) {
+                log.warn("Etapa '{}' não encontrada — realizando cadastro automático.", nomeEtapa);
                 etapa = etapaService.cadastrar(new Etapa("PEDIDO", nomeEtapa));
             }
             servico.setEtapa(etapa);

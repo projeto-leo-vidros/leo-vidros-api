@@ -18,6 +18,7 @@ import java.text.Normalizer;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Component("PEDIDO_SERVICO")
 @AllArgsConstructor
@@ -157,10 +158,11 @@ public class PedidoServicoStrategy implements PedidoStrategy {
             antigo.setEtapa(etapa);
         }
 
-        Status status = statusService.buscarOuCriarPorTipoENome(
-                destino.getStatus() != null ? destino.getStatus().getTipo() : "PEDIDO",
-                destino.getStatus() != null ? destino.getStatus().getNome() : "ATIVO"
-        );
+        String nomeStatus = destino.getStatus() != null ? destino.getStatus().getNome() : "ATIVO";
+        if (!Set.of("ATIVO", "INATIVO", "CANCELADO").contains(nomeStatus)) {
+            nomeStatus = "ATIVO";
+        }
+        Status status = statusService.buscarOuCriarPorTipoENome("PEDIDO", nomeStatus);
         origem.setStatus(status);
 
         BigDecimal total = BigDecimal.valueOf(antigo.getPrecoBase() != null ? antigo.getPrecoBase() : 0.0);

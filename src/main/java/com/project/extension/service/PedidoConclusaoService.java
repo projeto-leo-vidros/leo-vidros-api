@@ -7,6 +7,7 @@ import com.project.extension.entity.Servico;
 import com.project.extension.entity.Status;
 import com.project.extension.entity.TipoAgendamento;
 import com.project.extension.exception.RegraNegocioException;
+import com.project.extension.exception.naoencontrado.EtapaNaoEncontradoException;
 import com.project.extension.repository.ItemPedidoRepository;
 import com.project.extension.repository.OrcamentoRepository;
 import com.project.extension.repository.PedidoRepository;
@@ -80,8 +81,15 @@ public class PedidoConclusaoService {
     @Transactional
     public int corrigirPedidosServicoComConclusaoInvalida() {
         List<Pedido> pedidosServico = pedidoRepository.findByServicoIsNotNull();
-        Etapa etapaConcluido = etapaService.buscarPorTipoAndEtapa("PEDIDO", "CONCLUÍDO");
-        Etapa etapaAguardando = etapaService.buscarPorTipoAndEtapa("PEDIDO", "AGUARDANDO AGENDA DE ORÇAMENTO");
+        Etapa etapaConcluido;
+        Etapa etapaAguardando;
+        try {
+            etapaConcluido = etapaService.buscarPorTipoAndEtapa("PEDIDO", "CONCLUÍDO");
+            etapaAguardando = etapaService.buscarPorTipoAndEtapa("PEDIDO", "AGUARDANDO AGENDA DE ORÇAMENTO");
+        } catch (EtapaNaoEncontradoException e) {
+            log.warn("Etapas de referência ausentes — correção de pedidos ignorada: {}", e.getMessage());
+            return 0;
+        }
         Status statusAtivo = statusService.buscarOuCriarPorTipoENome("PEDIDO", "ATIVO");
         Status statusInativo = statusService.buscarOuCriarPorTipoENome("PEDIDO", "INATIVO");
 
