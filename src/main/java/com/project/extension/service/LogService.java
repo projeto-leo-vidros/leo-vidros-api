@@ -5,6 +5,7 @@ import com.project.extension.entity.Log;
 import com.project.extension.repository.CategoriaRepository;
 import com.project.extension.repository.LogRepository;
 import jakarta.annotation.PostConstruct;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.scheduling.annotation.Async;
@@ -14,6 +15,7 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
+@Slf4j
 @Service
 public class LogService {
     private final LogRepository logRepository;
@@ -42,25 +44,24 @@ public class LogService {
         Categoria categoria = categoriaCache.get(nivel.toUpperCase());
 
         if (categoria == null) {
-            System.err.println("Categoria de log " + nivel + " não encontrada. Usando INFO como fallback.");
+            log.warn("Categoria de log '{}' não encontrada no banco. Usando INFO como fallback.", nivel);
             categoria = categoriaCache.get("INFO");
         }
 
         if (categoria == null) {
-            System.err.println("Categoria INFO não encontrada. Log não será persistido para evitar falha da requisição.");
+            log.error("Categoria INFO ausente — log de negócio não será persistido: {}", mensagem);
             return;
         }
 
-        String mensagemCompleta = mensagem;
-        if (throwable != null) {
-            mensagemCompleta += "\nStack Trace: " + formatarStackTrace(throwable);
-        }
+        String mensagemCompleta = throwable != null
+                ? mensagem + "\nStack Trace: " + formatarStackTrace(throwable)
+                : mensagem;
 
         Log novoLog = new Log(LocalDateTime.now(), mensagemCompleta, categoria);
         try {
             logRepository.save(novoLog);
         } catch (Exception e) {
-            System.err.println("Erro ao persistir log: " + e.getMessage());
+            log.error("Falha ao persistir log de negócio no banco: {}", e.getMessage());
         }
     }
 

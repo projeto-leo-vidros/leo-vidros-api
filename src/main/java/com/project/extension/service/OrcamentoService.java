@@ -41,6 +41,9 @@ public class OrcamentoService {
 
     @Transactional
     public Orcamento criar(OrcamentoRequestDto request) {
+        int qtdItens = request.itens() != null ? request.itens().size() : 0;
+        log.info("[Orçamento] Criando — pedidoId={} itens={} total={}",
+                request.pedidoId(), qtdItens, request.valorTotal());
 
         Pedido pedido = pedidoService.buscarPorId(request.pedidoId());
 
@@ -76,13 +79,13 @@ public class OrcamentoService {
 
         Orcamento salvo = repository.save(orcamento);
 
+        log.info("[Orçamento] Criado — id={} numero='{}' pedidoId={} itens={} total={}",
+                salvo.getId(), salvo.getNumeroOrcamento(),
+                salvo.getPedido().getId(), salvo.getItens().size(), salvo.getValorTotal());
         logService.success(String.format(
-                "Orçamento ID %d criado com sucesso. Número: %s, Pedido: %d, Total: %s.",
-                salvo.getId(),
-                salvo.getNumeroOrcamento(),
-                salvo.getPedido().getId(),
-                salvo.getValorTotal()
-        ));
+                "Orçamento ID %d criado. Número: %s, Pedido: %d, Itens: %d, Total: %s.",
+                salvo.getId(), salvo.getNumeroOrcamento(),
+                salvo.getPedido().getId(), salvo.getItens().size(), salvo.getValorTotal()));
 
         return salvo;
     }
@@ -102,14 +105,17 @@ public class OrcamentoService {
     }
 
     private void publicarGeracaoPdf(Orcamento orcamento) {
-        sseService.enviarEvento(orcamento.getId(), "GERANDO_ORCAMENTO");
-        sseService.enviarEvento(orcamento.getId(), "GERANDO_PDF");
+        Integer orcamentoId = orcamento.getId();
+        String numero = orcamento.getNumeroOrcamento();
+
+        log.info("[Orçamento] Publicando geração de PDF — id={} numero='{}'", orcamentoId, numero);
+        sseService.enviarEvento(orcamentoId, "GERANDO_ORCAMENTO");
+        sseService.enviarEvento(orcamentoId, "GERANDO_PDF");
 
         OrcamentoMensagemDto mensagem = montarMensagem(orcamento);
         orcamento.setStatusFila(StatusFila.ENVIADO);
         repository.save(orcamento);
 
-        Integer orcamentoId = orcamento.getId();
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCommit() {
@@ -119,30 +125,36 @@ public class OrcamentoService {
                             RabbitMQConfig.ROUTING_KEY,
                             mensagem
                     );
+                    log.info("[Orçamento] Mensagem publicada no RabbitMQ — id={} numero='{}'", orcamentoId, numero);
                     logService.info(String.format(
-                            "Mensagem de geração de PDF publicada na fila para o Orçamento ID %d.", orcamentoId
-                    ));
+                            "Geração de PDF solicitada para Orçamento ID %d (número: %s).", orcamentoId, numero));
                 } catch (Exception e) {
+                    log.error("[Orçamento] Falha ao publicar no RabbitMQ — id={} numero='{}' motivo='{}'",
+                            orcamentoId, numero, e.getMessage(), e);
                     logService.error(String.format(
-                            "Falha ao publicar mensagem no RabbitMQ para Orçamento ID %d: %s",
-                            orcamentoId, e.getMessage()
-                    ));
+                            "Falha ao publicar geração de PDF para Orçamento ID %d: %s", orcamentoId, e.getMessage()));
                     sseService.enviarEvento(orcamentoId, "ERRO");
                 }
             }
         });
     }
 
+    public Optional<Orcamento> buscarPorNumeroOrcamento(String numero) {
+        return repository.findByNumeroOrcamento(numero);
+    }
+
     public Orcamento buscarPorId(Integer id) {
         return repository.findById(id).orElseThrow(() -> {
-            String msg = String.format("Orçamento ID %d não encontrado.", id);
-            logService.error(msg);
+            log.warn("[Orçamento] Não encontrado — id={}", id);
+            logService.error(String.format("Orçamento ID %d não encontrado.", id));
             return new OrcamentoNaoEncontradoException();
         });
     }
 
     public Page<Orcamento> listar(Pageable pageable) {
         Page<Orcamento> orcamentos = repository.findByAtivoTrueOrderByCreatedAtDesc(pageable);
+        log.debug("[Orçamento] Listagem — total={} pagina={} porPagina={}",
+                orcamentos.getTotalElements(), pageable.getPageNumber(), pageable.getPageSize());
         logService.info(String.format("Listagem de orçamentos: %d registros.", orcamentos.getTotalElements()));
         return orcamentos;
     }

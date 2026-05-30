@@ -75,7 +75,6 @@ public class PedidoService {
     @Transactional
     public Pedido editar(Integer id, Pedido pedidoAtualizar) {
         Pedido pedidoAntigo = buscarPorId(id);
-        log.debug(String.valueOf(pedidoAntigo.getId()));
         pedidoAntigo.setId(id);
         Pedido processado = pedidoContext.editar(pedidoAntigo, pedidoAtualizar);
 

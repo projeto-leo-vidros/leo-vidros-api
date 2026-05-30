@@ -109,7 +109,6 @@ public class SolicitacaoService {
     @Async
     void criarUsuarioEEnviarEmail(Solicitacao solicitacao) {
         String senhaTemporaria = gerarSenhaTemporaria();
-        log.debug("Senha temporária gerada: {}", senhaTemporaria);
 
         String senhaCriptografada = usuarioService.encodePassword(senhaTemporaria);
 
