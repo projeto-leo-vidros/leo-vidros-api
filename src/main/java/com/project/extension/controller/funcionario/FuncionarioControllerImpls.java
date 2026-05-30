@@ -11,6 +11,7 @@ import com.project.extension.service.FuncionarioService;
 
 import lombok.RequiredArgsConstructor;
 
+import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
@@ -32,7 +33,7 @@ public class FuncionarioControllerImpls implements FuncionarioControllerDoc {
 
     @Override
     @PostMapping
-    public ResponseEntity<FuncionarioResponseDto> salvar(@RequestBody FuncionarioRequestDto request) {
+    public ResponseEntity<FuncionarioResponseDto> salvar(@Valid @RequestBody FuncionarioRequestDto request) {
         Funcionario funcionarioSalvar = mapper.toEntity(request);
         Funcionario funcionarioSalvo = service.cadastrar(funcionarioSalvar);
         return ResponseEntity.status(201).body(mapper.toResponse(funcionarioSalvo));
@@ -55,7 +56,7 @@ public class FuncionarioControllerImpls implements FuncionarioControllerDoc {
     @Override
     @PutMapping("/{id}")
     public ResponseEntity<FuncionarioResponseDto> atualizar(
-            @RequestBody FuncionarioRequestDto request,
+            @Valid @RequestBody FuncionarioRequestDto request,
             @PathVariable Integer id) {
 
         Funcionario funcionarioAtualizar = mapper.toEntity(request);

@@ -14,6 +14,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 
@@ -54,6 +55,7 @@ public class EstoqueService {
         return movimentarEstoque(request, TipoMovimentacao.SAIDA, null, origemMovimentacao, motivoPerda, null);
     }
 
+    @Transactional(rollbackFor = Exception.class)
     private Estoque movimentarEstoque(
             Estoque request,
             TipoMovimentacao tipo,
@@ -101,7 +103,7 @@ public class EstoqueService {
     }
 
     private Estoque buscarOuCriarEstoque(Produto produto, String localizacao) {
-        return repository.findByProdutoAndLocalizacao(produto, localizacao)
+        return repository.findByProdutoAndLocalizacaoForUpdate(produto, localizacao)
                 .orElseGet(() -> {
                     Estoque novo = new Estoque();
                     novo.setProduto(produto);
@@ -237,8 +239,9 @@ public class EstoqueService {
         return estoque;
     }
 
+    @Transactional(rollbackFor = Exception.class)
     public void reservarProduto(Produto produto, BigDecimal quantidade) {
-        Estoque estoque = repository.findByProdutoId(produto.getId())
+        Estoque estoque = repository.findByProdutoIdForUpdate(produto.getId())
                 .orElseThrow(EstoqueNaoEncontradoException::new);
         sincronizarReservaComAgendamentosAtivos(estoque);
 
@@ -272,8 +275,9 @@ public class EstoqueService {
         return usuarioService.buscarPorEmail(email);
     }
 
+    @Transactional(rollbackFor = Exception.class)
     public void liberarProduto(Produto produto, BigDecimal quantidade) {
-        Estoque estoque = repository.findByProdutoId(produto.getId())
+        Estoque estoque = repository.findByProdutoIdForUpdate(produto.getId())
                 .orElseThrow(EstoqueNaoEncontradoException::new);
         sincronizarReservaComAgendamentosAtivos(estoque);
 
@@ -293,8 +297,9 @@ public class EstoqueService {
                 produto.getId(), quantidade, estoque.getQuantidadeDisponivel()));
     }
 
+    @Transactional(rollbackFor = Exception.class)
     public void finalizarReservaProduto(Produto produto, BigDecimal quantidadeReservada, BigDecimal quantidadeUtilizada) {
-        Estoque estoque = repository.findByProdutoId(produto.getId())
+        Estoque estoque = repository.findByProdutoIdForUpdate(produto.getId())
                 .orElseThrow(EstoqueNaoEncontradoException::new);
 
         sincronizarReservaComAgendamentosAtivos(estoque);

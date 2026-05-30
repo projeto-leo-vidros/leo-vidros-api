@@ -98,7 +98,7 @@ public interface OrcamentoControllerDoc {
     })
     ResponseEntity<OrcamentoResponseDto> atualizarStatus(
             @PathVariable Integer id,
-            @RequestBody AtualizarStatusRequestDto body
+            @Valid @RequestBody AtualizarStatusRequestDto body
     );
 
         @GetMapping("/id/{id}/pdf")

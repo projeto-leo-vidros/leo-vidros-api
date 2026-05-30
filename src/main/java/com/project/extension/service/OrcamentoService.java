@@ -321,7 +321,7 @@ public class OrcamentoService {
 
         List<OrcamentoMensagemDto.ItemMsg> itensMsg = orcamento.getItens().stream()
                 .map(item -> new OrcamentoMensagemDto.ItemMsg(
-                        item.getDescricao(),
+                        item.getDescricao() != null ? item.getDescricao() : "",
                         item.getQuantidade() != null ? item.getQuantidade() : BigDecimal.ZERO,
                         item.getPrecoUnitario() != null ? item.getPrecoUnitario() : BigDecimal.ZERO,
                         item.getDesconto() != null ? item.getDesconto() : BigDecimal.ZERO,
