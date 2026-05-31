@@ -29,7 +29,6 @@ public class EstoqueService {
     private final ProdutoService produtoService;
     private final HistoricoEstoqueService historicoService;
     private final UsuarioService usuarioService;
-    private final LogService logService;
 
     public Estoque entrada(Estoque request) {
         return movimentarEstoque(request, TipoMovimentacao.ENTRADA, null, null, null, null);
@@ -90,7 +89,6 @@ public class EstoqueService {
         Estoque salvo = repository.save(estoque);
 
         registrarHistorico(salvo, tipo, pedido, origem, motivoPerda, quantidade, produto, observacao);
-        logMovimentacao(tipo, quantidade, produto, salvo);
 
         return salvo;
     }
@@ -111,19 +109,12 @@ public class EstoqueService {
                     novo.setQuantidadeTotal(BigDecimal.ZERO);
                     novo.setQuantidadeDisponivel(BigDecimal.ZERO);
                     novo.setReservado(BigDecimal.ZERO);
-
-                    logService.warning(String.format(
-                            "Novo registro de estoque criado implicitamente para Produto ID %d em %s.",
-                            produto.getId(), localizacao
-                    ));
-
                     return novo;
                 });
     }
 
     private BigDecimal validarQuantidade(BigDecimal quantidade) {
         if (quantidade == null || quantidade.compareTo(BigDecimal.ZERO) <= 0) {
-            logService.error("Tentativa de movimentação com quantidade inválida.");
             throw new IllegalArgumentException("A quantidade movimentada deve ser maior que zero.");
         }
         return quantidade;
@@ -214,20 +205,6 @@ public class EstoqueService {
         historicoService.cadastrar(historico);
     }
 
-    private void logMovimentacao(
-            TipoMovimentacao tipo,
-            BigDecimal quantidade,
-            Produto produto,
-            Estoque estoque
-    ) {
-        Usuario usuario = getUsuarioLogado();
-
-        logService.info(String.format(
-                "Movimentação de estoque (Tipo: %s) por Usuário ID %d. Produto: '%s', Quantidade: %f, Novo Total: %f.",
-                tipo, usuario.getId(), produto.getNome(), quantidade, estoque.getQuantidadeTotal()
-        ));
-    }
-
     public Page<Estoque> listar(Pageable pageable) {
         return repository.findAll(pageable);
     }
@@ -291,10 +268,6 @@ public class EstoqueService {
 
         repository.save(estoque);
         atualizarStatusProduto(estoque.getProduto(), estoque.getQuantidadeDisponivel());
-
-        logService.info(String.format(
-                "Reserva liberada para Produto ID %d. Quantidade liberada: %s. Novo disponível: %s.",
-                produto.getId(), quantidade, estoque.getQuantidadeDisponivel()));
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -351,15 +324,6 @@ public class EstoqueService {
                     "Baixa de estoque por conclusao de agendamento"
             );
         }
-
-        logService.info(String.format(
-                "Reserva finalizada para Produto ID %d. Reservado baixado: %s. Utilizado: %s. Novo total: %s. Novo disponivel: %s.",
-                produto.getId(),
-                reservada.stripTrailingZeros().toPlainString(),
-                utilizada.stripTrailingZeros().toPlainString(),
-                salvo.getQuantidadeTotal().stripTrailingZeros().toPlainString(),
-                salvo.getQuantidadeDisponivel().stripTrailingZeros().toPlainString()
-        ));
     }
 
     public Estoque buscarEstoquePorIdProduto(Produto produto) {

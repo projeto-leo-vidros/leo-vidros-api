@@ -35,7 +35,7 @@ public class AgendamentoService {
     private final com.project.extension.repository.PedidoRepository pedidoRepository;
     private final PedidoConclusaoService pedidoConclusaoService;
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public Agendamento salvar(Agendamento agendamento) {
         if (agendamento.getFuncionarios() == null || agendamento.getFuncionarios().isEmpty()) {
             throw new RegraNegocioException("É obrigatório informar pelo menos um funcionário responsável pelo agendamento.");
@@ -56,9 +56,8 @@ public class AgendamentoService {
         return agendamentoSalvo;
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public Agendamento editar(Agendamento origem, Integer id) {
-        log.debug("Iniciando edição do Agendamento ID {}.", id);
         Agendamento destino = buscarPorId(id);
 
         atualizarDadosBasicos(destino, origem);
@@ -68,14 +67,7 @@ public class AgendamentoService {
         atualizarStatus(destino, origem);
         atualizarFuncionarios(destino, origem);
 
-        Agendamento atualizado = repository.save(destino);
-
-        String mensagem = String.format("Agendamento ID %d atualizado com sucesso. Novo Status: %s, Data: %s.",
-                atualizado.getId(),
-                atualizado.getStatusAgendamento() != null ? atualizado.getStatusAgendamento().getNome() : "N/A",
-                atualizado.getDataAgendamento());
-        logService.info(mensagem);
-        return atualizado;
+        return repository.save(destino);
     }
 
     public void deletar(Integer id) {
@@ -98,26 +90,21 @@ public class AgendamentoService {
         if (servico != null && tipo == TipoAgendamento.SERVICO) {
             reverterEtapaServicoSeCancelado(servico);
         }
-        logService.info(String.format("Agendamento ID %d desvinculado de funcionários (exclusão lógica).", id));
-        log.info("Agendamento ID {} desvinculado de funcionários e mantido no histórico.", id);
     }
 
     public Agendamento buscarPorId(Integer id) {
         return repository.findById(id)
                 .orElseThrow(() -> {
-                    logService.error(String.format("Falha ao buscar: Agendamento com ID %d não encontrado.", id));
-                    log.error("Agendamento com ID {} não encontrado", id);
+                    log.warn("Agendamento com ID {} não encontrado", id);
                     return new AgendamentoNaoEncontradoException();
                 });
     }
 
     public Page<Agendamento> buscarTodos(Pageable pageable) {
-        Page<Agendamento> lista = repository.findAll(pageable);
-        logService.info(String.format("Busca por todos os agendamentos realizada. Total de registros: %d.", lista.getTotalElements()));
-        return lista;
+        return repository.findAll(pageable);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public Agendamento editarDadosBasicos(Agendamento origem, Integer id) {
         Agendamento destino = buscarPorId(id);
 
@@ -162,8 +149,6 @@ public class AgendamentoService {
             }
 
             destino.setStatusAgendamento(statusAtualizado);
-            logService.info(String.format("Status do Agendamento ID %d alterado para: %s.",
-                    destino.getId(), statusAtualizado.getNome()));
         }
 
         return repository.save(destino);
@@ -175,7 +160,6 @@ public class AgendamentoService {
         destino.setFimAgendamento(origem.getFimAgendamento());
         destino.setDataAgendamento(origem.getDataAgendamento());
         destino.setObservacao(origem.getObservacao());
-        log.trace("Dados básicos do agendamento atualizados.");
     }
 
     private void atualizarEndereco(Agendamento destino, Agendamento origem) {
@@ -188,7 +172,6 @@ public class AgendamentoService {
                 Endereco novoEndereco = enderecoService.cadastrar(origem.getEndereco());
                 destino.setEndereco(novoEndereco);
             }
-            log.trace("Endereço do agendamento atualizado.");
         }
     }
 
@@ -227,8 +210,6 @@ public class AgendamentoService {
             }
 
             destino.setStatusAgendamento(statusAtualizado);
-            logService.info(String.format("Status do Agendamento ID %d alterado para: %s.",
-                    destino.getId(), statusAtualizado.getNome()));
         }
     }
 
@@ -325,7 +306,7 @@ public class AgendamentoService {
         }
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public Agendamento removerFuncionario(Integer agendamentoId, Integer funcionarioId) {
         Agendamento agendamento = buscarPorId(agendamentoId);
 
@@ -351,10 +332,6 @@ public class AgendamentoService {
 
         Agendamento atualizado = repository.save(agendamento);
 
-        logService.info(String.format(
-                "Funcionário ID %d removido do Agendamento ID %d com sucesso.",
-                funcionarioId, agendamentoId));
-
         if (atualizado.getFuncionarios().isEmpty()) {
             cancelarAgendamentoSemFuncionario(atualizado);
         }
@@ -362,7 +339,7 @@ public class AgendamentoService {
         return atualizado;
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public Agendamento adicionarFuncionario(Integer agendamentoId, Integer funcionarioId) {
         Agendamento agendamento = buscarPorId(agendamentoId);
         Funcionario funcionario = funcionarioService.buscarPorId(funcionarioId);
@@ -430,7 +407,6 @@ public class AgendamentoService {
         Etapa etapaConcluido = etapaService.buscarPorTipoAndEtapa("PEDIDO", "CONCLUÍDO");
         servico.setEtapa(etapaConcluido);
         servicoService.editar(servico, servico.getId());
-        log.info("Serviço ID {} marcado como CONCLUÍDO após finalização do agendamento.", servico.getId());
 
         Pedido pedido = servico.getPedido();
         if (pedido != null) {
@@ -438,7 +414,6 @@ public class AgendamentoService {
             Status statusInativo = statusService.buscarOuCriarPorTipoENome("PEDIDO", "INATIVO");
             pedido.setStatus(statusInativo);
             pedidoRepository.save(pedido);
-            log.info("Pedido ID {} marcado como INATIVO após conclusão do serviço.", pedido.getId());
         }
     }
 
@@ -454,7 +429,6 @@ public class AgendamentoService {
             }
             servico.setEtapa(etapa);
             servicoService.editar(servico, servico.getId());
-            log.info("Etapa do Serviço ID {} atualizada para '{}'.", servico.getId(), nomeEtapa);
         } catch (Exception e) {
             log.warn("Não foi possível atualizar etapa do serviço ID {} para '{}': {}", servico.getId(), nomeEtapa, e.getMessage());
         }
@@ -467,7 +441,6 @@ public class AgendamentoService {
                 Etapa etapaAguardando = etapaService.buscarPorTipoAndEtapa("PEDIDO", "AGUARDANDO AGENDA DE SERVIÇO/INSTALAÇÃO");
                 servico.setEtapa(etapaAguardando);
                 servicoService.editar(servico, servico.getId());
-                log.info("Serviço ID {} revertido para AGUARDANDO AGENDA DE SERVIÇO/INSTALAÇÃO após cancelamento de agendamento de serviço.", servico.getId());
             } catch (Exception e) {
                 log.warn("Não foi possível reverter etapa do serviço ID {}: {}", servico.getId(), e.getMessage());
             }
@@ -483,7 +456,6 @@ public class AgendamentoService {
                 Etapa etapaAguardando = etapaService.buscarPorTipoAndEtapa("PEDIDO", "AGUARDANDO AGENDA DE ORÇAMENTO");
                 servico.setEtapa(etapaAguardando);
                 servicoService.editar(servico, servico.getId());
-                log.info("Serviço ID {} revertido para AGUARDANDO AGENDA DE ORÇAMENTO após perda de agendamento de orçamento.", servico.getId());
             } catch (Exception e) {
                 log.warn("Não foi possível reverter etapa do serviço ID {}: {}", servico.getId(), e.getMessage());
             }

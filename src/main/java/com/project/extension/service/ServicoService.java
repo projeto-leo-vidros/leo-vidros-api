@@ -19,12 +19,9 @@ public class ServicoService {
 
     private final ServicoRepository repository;
     private final EtapaService etapaService;
-    private final LogService logService;
 
     public Servico buscarPorId(Integer id) {
         return repository.findById(id).orElseThrow(() -> {
-            String mensagem = String.format("Falha na busca: Serviço com ID %d não encontrado.", id);
-            logService.error(mensagem);
             log.warn("Serviço com ID {} não encontrado", id);
             return new ServicoNaoEncontradoException();
         });
@@ -63,9 +60,7 @@ public class ServicoService {
     }
 
     public List<Servico> listar() {
-        List<Servico> servicos = repository.findAll();
-        logService.info(String.format("Busca por todos os serviços. Total de registros: %d.", servicos.size()));
-        return servicos;
+        return repository.findAll();
     }
 
     private void atualizarCampos(Servico destino, Servico origem) {
@@ -73,7 +68,6 @@ public class ServicoService {
         destino.setDescricao(origem.getDescricao());
         destino.setPrecoBase(origem.getPrecoBase());
         destino.setAtivo(origem.getAtivo());
-        log.trace("Campos do serviço atualizados em memória.");
     }
 
     public void atualizarEtapa(Servico destino, Servico origem) {
@@ -84,17 +78,13 @@ public class ServicoService {
         Servico servico = buscarPorId(servicoId);
         Etapa etapa = etapaService.buscarPorTipoAndEtapa("PEDIDO", nomeEtapa);
         servico.setEtapa(etapa);
-        Servico atualizado = repository.save(servico);
-        logService.info(String.format("Etapa do Serviço ID %d atualizada para '%s'.", servicoId, nomeEtapa));
-        return atualizado;
+        return repository.save(servico);
     }
 
     public Servico editar(Servico origem, Integer id) {
         Servico destino = this.buscarPorId(id);
         this.atualizarCampos(destino, origem);
         this.atualizarEtapa(destino, origem);
-        Servico servicoAtualizado = repository.save(destino);
-        log.info("Serviço com nome: {}  atualizado com sucesso!", servicoAtualizado.getNome());
-        return servicoAtualizado;
+        return repository.save(destino);
     }
 }

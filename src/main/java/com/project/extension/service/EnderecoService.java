@@ -20,22 +20,11 @@ public class EnderecoService {
     private final LogService logService;
 
     public Endereco cadastrar(Endereco endereco) {
-        Endereco enderecoSalvo = repository.save(endereco);
-
-        logService.success(String.format(
-                "Novo Endereço ID %d cadastrado. CEP: %s, Rua: %s.",
-                enderecoSalvo.getId(),
-                enderecoSalvo.getCep(),
-                enderecoSalvo.getRua()
-        ));
-
-        return enderecoSalvo;
+        return repository.save(endereco);
     }
 
     public Endereco buscarPorId(Integer id) {
         return repository.findById(id).orElseThrow(() -> {
-            String mensagem = String.format("Falha na busca: Endereço com ID %d não encontrado.", id);
-            logService.error(mensagem);
             log.warn("Endereço com ID {} não encontrado", id);
             return new EnderecoNaoEncontradoException();
         });
@@ -44,13 +33,12 @@ public class EnderecoService {
     public Endereco buscarPorCep(String cep) {
         List<Endereco> enderecos = repository.findAllByCepOrderByIdDesc(cep);
         if (enderecos == null || enderecos.isEmpty()) {
-            logService.info(String.format("Nenhum endere\u00e7o encontrado para o CEP %s.", cep));
             return null;
         }
 
         if (enderecos.size() > 1) {
             logService.warning(String.format(
-                    "Foram encontrados %d endere\u00e7os para o CEP %s. Utilizando o mais recente (ID %d).",
+                    "Foram encontrados %d endereços para o CEP %s. Utilizando o mais recente (ID %d).",
                     enderecos.size(),
                     cep,
                     enderecos.get(0).getId()
@@ -61,12 +49,7 @@ public class EnderecoService {
     }
 
     public List<Endereco> listar() {
-        List<Endereco> enderecos = repository.findAll();
-        logService.info(String.format(
-                "Busca por todos os endereços realizada. Total de registros: %d.",
-                enderecos.size()
-        ));
-        return enderecos;
+        return repository.findAll();
     }
 
     private void atualizarCampos(Endereco destino, Endereco origem) {
@@ -78,35 +61,17 @@ public class EnderecoService {
         destino.setPais(origem.getPais());
         destino.setUf(origem.getUf());
         destino.setNumero(origem.getNumero());
-        log.trace("Campos do endereço atualizados em memória.");
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public Endereco editar(Endereco origem, Integer id) {
         Endereco destino = this.buscarPorId(id);
-
         atualizarCampos(destino, origem);
-
-        Endereco atualizado = repository.save(destino);
-
-        logService.info(String.format(
-                "Endereço ID %d atualizado com sucesso. Novo CEP: %s.",
-                atualizado.getId(),
-                atualizado.getCep()
-        ));
-
-        return atualizado;
+        return repository.save(destino);
     }
 
     public void deletar(Integer id) {
-        Endereco endereco = this.buscarPorId(id);
-
+        this.buscarPorId(id);
         repository.deleteById(id);
-
-        logService.info(String.format(
-                "Endereço ID %d (Rua: %s) deletado com sucesso.",
-                id,
-                endereco.getRua()
-        ));
     }
 }

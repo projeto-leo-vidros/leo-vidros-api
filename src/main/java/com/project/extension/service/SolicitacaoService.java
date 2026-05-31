@@ -59,11 +59,9 @@ public class SolicitacaoService {
     }
 
     public Page<Solicitacao> listarPorNome(String nome, Pageable pageable) {
-        Page<Solicitacao> page = nome != null && !nome.isBlank()
+        return nome != null && !nome.isBlank()
                 ? repository.findAllByNomeIgnoreCase(nome, pageable)
                 : repository.findAll(pageable);
-        logService.info(String.format("Busca por solicitação pelo nome '%s' realizada. Total: %d.", nome, page.getTotalElements()));
-        return page;
     }
 
     public Page<Solicitacao> listar(String status, Pageable pageable) {
@@ -77,8 +75,6 @@ public class SolicitacaoService {
             Status aprovado = statusService.buscarPorTipoAndStatus("SOLICITACAO", "ACEITO");
             solicitacao.setStatus(aprovado);
             repository.save(solicitacao);
-
-            logService.info(String.format("Solicitacao ID %d aceita. Status alterado para ACEITO.", id));
 
             try {
                 criarUsuarioEEnviarEmail(solicitacao);
@@ -135,12 +131,10 @@ public class SolicitacaoService {
     private void enviarEmailAceite(String nomeUsuario, String email, String senha) {
         String conteudoHtml = emailService.gerarEmailAceito(nomeUsuario, email, senha);
         emailService.enviarEmail(email, "Solicitação Aceita", conteudoHtml);
-        logService.info(String.format("Email de ACEITE com credenciais enviado para: %s.", email));
     }
 
     private void enviarEmailRecusa(String nomeUsuario, String email) {
         String conteudoHtml = emailService.gerarEmailRecusado(nomeUsuario);
         emailService.enviarEmail(email, "Solicitação Recusada", conteudoHtml);
-        logService.info(String.format("Email de RECUSA enviado para: %s.", email));
     }
 }

@@ -39,12 +39,8 @@ public class OrcamentoService {
     private final RabbitTemplate rabbitTemplate;
     private final OrcamentoSseService sseService;
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public Orcamento criar(OrcamentoRequestDto request) {
-        int qtdItens = request.itens() != null ? request.itens().size() : 0;
-        log.info("[Orçamento] Criando — pedidoId={} itens={} total={}",
-                request.pedidoId(), qtdItens, request.valorTotal());
-
         Pedido pedido = pedidoService.buscarPorId(request.pedidoId());
 
         Integer clienteId = request.clienteId() != null
@@ -79,9 +75,6 @@ public class OrcamentoService {
 
         Orcamento salvo = repository.save(orcamento);
 
-        log.info("[Orçamento] Criado — id={} numero='{}' pedidoId={} itens={} total={}",
-                salvo.getId(), salvo.getNumeroOrcamento(),
-                salvo.getPedido().getId(), salvo.getItens().size(), salvo.getValorTotal());
         logService.success(String.format(
                 "Orçamento ID %d criado. Número: %s, Pedido: %d, Itens: %d, Total: %s.",
                 salvo.getId(), salvo.getNumeroOrcamento(),
@@ -90,14 +83,14 @@ public class OrcamentoService {
         return salvo;
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public Orcamento criarEGerarPdf(OrcamentoRequestDto request) {
         Orcamento salvo = criar(request);
         publicarGeracaoPdf(salvo);
         return salvo;
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public Orcamento gerarPdf(Integer id) {
         Orcamento orcamento = buscarPorId(id);
         publicarGeracaoPdf(orcamento);
@@ -126,8 +119,6 @@ public class OrcamentoService {
                             mensagem
                     );
                     log.info("[Orçamento] Mensagem publicada no RabbitMQ — id={} numero='{}'", orcamentoId, numero);
-                    logService.info(String.format(
-                            "Geração de PDF solicitada para Orçamento ID %d (número: %s).", orcamentoId, numero));
                 } catch (Exception e) {
                     log.error("[Orçamento] Falha ao publicar no RabbitMQ — id={} numero='{}' motivo='{}'",
                             orcamentoId, numero, e.getMessage(), e);
@@ -146,24 +137,19 @@ public class OrcamentoService {
     public Orcamento buscarPorId(Integer id) {
         return repository.findById(id).orElseThrow(() -> {
             log.warn("[Orçamento] Não encontrado — id={}", id);
-            logService.error(String.format("Orçamento ID %d não encontrado.", id));
             return new OrcamentoNaoEncontradoException();
         });
     }
 
     public Page<Orcamento> listar(Pageable pageable) {
-        Page<Orcamento> orcamentos = repository.findByAtivoTrueOrderByCreatedAtDesc(pageable);
-        log.debug("[Orçamento] Listagem — total={} pagina={} porPagina={}",
-                orcamentos.getTotalElements(), pageable.getPageNumber(), pageable.getPageSize());
-        logService.info(String.format("Listagem de orçamentos: %d registros.", orcamentos.getTotalElements()));
-        return orcamentos;
+        return repository.findByAtivoTrueOrderByCreatedAtDesc(pageable);
     }
 
     public Page<Orcamento> listarPorPedido(Integer pedidoId, Pageable pageable) {
         return repository.findByPedidoIdAndAtivoTrue(pedidoId, pageable);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public Orcamento atualizarStatus(Integer id, String statusNome, String pdfPath) {
         Orcamento orcamento = buscarPorId(id);
         Status status = statusService.buscarOuCriarPorTipoENome("ORCAMENTO", statusNome);
@@ -180,11 +166,6 @@ public class OrcamentoService {
 
         Orcamento atualizado = repository.save(orcamento);
 
-        logService.info(String.format(
-                "Status do Orçamento ID %d atualizado para '%s'.",
-                id, statusNome
-        ));
-
         String eventoSse = "ERRO".equalsIgnoreCase(statusNome) ? "ERRO" : "FINALIZADO";
         sseService.enviarEvento(id, eventoSse);
 
@@ -197,7 +178,7 @@ public class OrcamentoService {
         return atualizado;
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public Orcamento atualizar(Integer id, OrcamentoRequestDto request) {
         Orcamento orcamento = buscarPorId(id);
 
@@ -308,12 +289,11 @@ public class OrcamentoService {
         Optional.ofNullable(value).ifPresent(setter);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void deletar(Integer id) {
         Orcamento orcamento = buscarPorId(id);
         orcamento.setAtivo(false);
         repository.save(orcamento);
-        logService.info(String.format("Orçamento ID %d desativado.", id));
     }
 
     private void avancarEtapaSeElegivel(Pedido pedido, String nomeEtapa) {

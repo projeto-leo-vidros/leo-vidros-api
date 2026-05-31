@@ -26,7 +26,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/funcionarios")
 @RequiredArgsConstructor
-public class FuncionarioControllerImpls implements FuncionarioControllerDoc {
+public class FuncionarioControllerImpl implements FuncionarioControllerDoc {
 
     private final FuncionarioService service;
     private final FuncionarioMapper mapper;

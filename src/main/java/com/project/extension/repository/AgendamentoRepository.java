@@ -106,8 +106,10 @@ public interface AgendamentoRepository extends JpaRepository<Agendamento, Intege
     Double taxaOcupacaoServicos();
 
     @Query("""
-        SELECT a FROM Agendamento a
-        JOIN a.funcionarios f
+        SELECT DISTINCT a FROM Agendamento a
+        JOIN FETCH a.funcionarios f
+        LEFT JOIN FETCH a.servico s
+        LEFT JOIN FETCH a.statusAgendamento
         WHERE f.id = :funcionarioId
         AND a.dataAgendamento BETWEEN :dataInicio AND :dataFim
         ORDER BY a.dataAgendamento ASC, a.inicioAgendamento ASC
@@ -156,6 +158,8 @@ public interface AgendamentoRepository extends JpaRepository<Agendamento, Intege
     @Query("""
         SELECT a
         FROM Agendamento a
+        JOIN FETCH a.servico
+        JOIN FETCH a.statusAgendamento
         WHERE a.servico.id = :servicoId
         AND a.statusAgendamento.nome NOT IN ('CANCELADO', 'INATIVO')
         ORDER BY a.dataAgendamento ASC, a.inicioAgendamento ASC

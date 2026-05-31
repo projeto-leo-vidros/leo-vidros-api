@@ -29,9 +29,10 @@ spring:
       connection-init-sql: "SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci"
 
   flyway:
-    enabled: false
-    baseline-on-migrate: false  
-    baseline-version: 1
+    enabled: true
+    baseline-on-migrate: true
+    baseline-version: 0
+    locations: classpath:db/migration
 
   docker:
     compose:
@@ -39,7 +40,7 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: none
+      ddl-auto: validate
     properties:
       hibernate:
         dialect: org.hibernate.dialect.MySQL8Dialect
@@ -62,6 +63,24 @@ cors:
 
 jwt:
   secret: ${JWT_SECRET:minha_chave_secreta_padrao_para_dev_123}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: never
+  info:
+    env:
+      enabled: true
+
+info:
+  app:
+    name: Leo Vidros API
+    version: 1.0.0
 
 app:
   environment: ${APP_ENV:development}

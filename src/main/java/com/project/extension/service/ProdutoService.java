@@ -55,20 +55,16 @@ public class ProdutoService {
 
     public Produto buscarPorId(Integer id) {
         return repository.findById(id).orElseThrow(() -> {
-            String mensagem = String.format("Falha na busca: Produto com ID %d não encontrado.", id);
-            logService.error(mensagem);
-            log.warn(mensagem);
+            log.warn("Falha na busca: Produto com ID {} não encontrado.", id);
             return new ProdutoNaoEncontradoException();
         });
     }
 
     public Page<Produto> listar(Pageable pageable) {
-        Page<Produto> produtos = repository.findAll(pageable);
-        logService.info(String.format("Busca por todos os produtos realizada. Total de registros: %d.", produtos.getTotalElements()));
-        return produtos;
+        return repository.findAll(pageable);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public Produto editar(Produto origem, Integer id) {
         Produto destino = this.buscarPorId(id);
 
@@ -76,12 +72,10 @@ public class ProdutoService {
         this.atualizarAtributosProduto(destino, origem);
         this.atualizarMetricaEstoque(destino, origem);
 
-        Produto produtoAtualizado = this.cadastrar(destino);
-        log.info("Produto atualizado com sucesso!");
-        return produtoAtualizado;
+        return this.cadastrar(destino);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void deletar(Integer id) {
         Produto produto = this.buscarPorId(id);
 
@@ -97,9 +91,6 @@ public class ProdutoService {
         }
 
         repository.delete(produto);
-        String mensagem = String.format("Produto ID %d (Nome: %s) deletado com sucesso, juntamente com seus atributos.",
-                id, produto.getNome());
-        logService.info(mensagem);
     }
 
     private void atualizarDadosBasicos(Produto destino, Produto origem) {
@@ -166,14 +157,8 @@ public class ProdutoService {
 
     public Produto atualizarStatus(Integer id, String status) {
         Produto produtoAtualizar = this.buscarPorId(id);
-
         boolean novoStatus = Boolean.parseBoolean(status);
         produtoAtualizar.setAtivo(novoStatus);
-
-        Produto produtoAtualizado = repository.save(produtoAtualizar);
-        String mensagem = String.format("Status do Produto ID %d (%s) atualizado com sucesso para: %s.",
-                produtoAtualizado.getId(), produtoAtualizado.getNome(), novoStatus ? "Ativo" : "Inativo");
-        logService.info(mensagem);
-        return produtoAtualizado;
+        return repository.save(produtoAtualizar);
     }
 }

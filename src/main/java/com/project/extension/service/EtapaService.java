@@ -19,12 +19,7 @@ public class EtapaService {
     private final LogService logService;
 
     public Etapa cadastrar(Etapa etapa) {
-        Etapa salvo = repository.save(etapa);
-        String mensagem = String.format("Nova Etapa cadastrada com sucesso. ID: %d, Tipo: '%s', Nome: '%s'.",
-                salvo.getId(), salvo.getTipo(), salvo.getNome());
-        logService.success(mensagem); // Usando SUCCESS para indicar criação bem-sucedida
-
-        return salvo;
+        return repository.save(etapa);
     }
 
     public Etapa buscarOuCriarPorTipoENome(String tipo, String nome) {
@@ -69,9 +64,7 @@ public class EtapaService {
             return etapaParcial.get();
         }
 
-        String mensagem = String.format("Falha na busca: Etapa do tipo '%s' e nome '%s' não encontrada.", tipo, nome);
-        logService.error(mensagem);
-        log.warn(mensagem);
+        log.warn("Falha na busca: Etapa do tipo '{}' e nome '{}' não encontrada.", tipo, nome);
         throw new EtapaNaoEncontradoException();
     }
 

@@ -38,8 +38,12 @@ public class SecurityConfig {
             "/swagger-ui.html",
             "/swagger-resources/**",
             "/webjars/**",
-            "/auth/**",
-            "/orcamentos/stream/**"
+            "/auth/login",
+            "/auth/forgot-password",
+            "/auth/refresh",
+            "/orcamentos/stream/**",
+            "/actuator/health",
+            "/actuator/info"
     };
 
     @Bean

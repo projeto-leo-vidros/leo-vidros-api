@@ -4,6 +4,7 @@ import com.project.extension.entity.Etapa;
 import com.project.extension.entity.Pedido;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -13,14 +14,22 @@ import java.math.BigDecimal;
 import java.util.List;
 
 public interface PedidoRepository extends JpaRepository<Pedido, Integer> {
+
+    @EntityGraph(attributePaths = {"status", "cliente"})
+    Page<Pedido> findAll(Pageable pageable);
+
+    @EntityGraph(attributePaths = {"status", "cliente"})
     Page<Pedido> findAllByServico_Etapa(Etapa etapa, Pageable pageable);
 
+    @EntityGraph(attributePaths = {"status", "cliente"})
     Page<Pedido> findByTipoPedidoIgnoreCase(String tipo, Pageable pageable);
 
+    @EntityGraph(attributePaths = {"status", "cliente"})
     Page<Pedido> findByServicoIsNotNull(Pageable pageable);
 
     List<Pedido> findByServicoIsNotNull();
 
+    @EntityGraph(attributePaths = {"status", "cliente"})
     Page<Pedido> findByTipoPedidoIgnoreCaseAndItensPedidoIsNotEmpty(String tipo, Pageable pageable);
 
     @Query(value = """

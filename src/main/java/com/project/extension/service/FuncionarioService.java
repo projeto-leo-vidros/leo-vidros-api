@@ -31,17 +31,11 @@ public class FuncionarioService {
     private final LogService logService;
 
     public Funcionario cadastrar(Funcionario funcionario) {
-        Funcionario funcionarioSalvo = repository.save(funcionario);
-        String mensagem = String.format("Novo Funcionário ID %d cadastrado com sucesso. Nome: %s, Função: %s.",
-                funcionarioSalvo.getId(), funcionarioSalvo.getNome(), funcionarioSalvo.getFuncao());
-        logService.success(mensagem);
-        return funcionarioSalvo;
+        return repository.save(funcionario);
     }
 
     public Funcionario buscarPorId(Integer id) {
         return repository.findById(id).orElseThrow(() -> {
-            String mensagem = String.format("Falha na busca: Funcionário com ID %d não encontrado.", id);
-            logService.error(mensagem);
             log.warn("Funcionário com ID {} não encontrado", id);
             return new FuncionarioNaoEncontradoException();
         });
@@ -52,9 +46,7 @@ public class FuncionarioService {
     }
 
     public Page<Funcionario> listar(Pageable pageable) {
-        Page<Funcionario> funcionarios = repository.findAll(pageable);
-        logService.info(String.format("Busca por todos os funcionários realizada. Total de registros: %d.", funcionarios.getTotalElements()));
-        return funcionarios;
+        return repository.findAll(pageable);
     }
 
     private void atualizarCampos(Funcionario destino, Funcionario origem) {
@@ -64,10 +56,9 @@ public class FuncionarioService {
         destino.setContrato(origem.getContrato());
         destino.setEscala(origem.getEscala());
         destino.setAtivo(origem.getAtivo());
-        log.trace("Campos do funcionário atualizados em memória.");
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public Funcionario editar(Funcionario origem, Integer id) {
         Funcionario destino = this.buscarPorId(id);
 
@@ -81,9 +72,6 @@ public class FuncionarioService {
             desvincularAgendamentosFuturos(id);
         }
 
-        String mensagem = String.format("Funcionário ID %d atualizado com sucesso. Nome: %s, Função: %s.",
-                funcionarioAtualizado.getId(), funcionarioAtualizado.getNome(), funcionarioAtualizado.getFuncao());
-        logService.info(mensagem);
         return funcionarioAtualizado;
     }
 
@@ -103,23 +91,16 @@ public class FuncionarioService {
                 logService.warning(String.format(
                         "Agendamento ID %d cancelado automaticamente: único funcionário (ID %d) foi inativado.",
                         ag.getId(), funcionarioId));
-            } else {
-                logService.info(String.format(
-                        "Funcionário ID %d removido do Agendamento ID %d por inativação.",
-                        funcionarioId, ag.getId()));
             }
 
             agendamentoRepository.save(ag);
         }
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void deletar(Integer id) {
-        Funcionario funcionarioParaDeletar = this.buscarPorId(id);
+        this.buscarPorId(id);
         repository.deleteById(id);
-        String mensagem = String.format("Funcionário ID %d (Nome: %s) deletado com sucesso.",
-                id, funcionarioParaDeletar.getNome());
-        logService.info(mensagem);
     }
 
     @Transactional(readOnly = true)
@@ -128,9 +109,6 @@ public class FuncionarioService {
 
         List<Agendamento> agendamentos = agendamentoRepository
                 .findAgendamentosByFuncionarioAndPeriodo(funcionarioId, dataInicio, dataFim);
-
-        logService.info(String.format("Consulta de agenda do Funcionário ID %d entre %s e %s. Total: %d agendamentos.",
-                funcionarioId, dataInicio, dataFim, agendamentos.size()));
 
         return agendamentos.stream()
                 .map(this::toAgendaResponse)
@@ -175,9 +153,6 @@ public class FuncionarioService {
 
     public List<FuncionarioDisponivelResponseDto> buscarDisponiveis(LocalDate data, LocalTime inicio, LocalTime fim) {
         List<Funcionario> disponiveis = repository.findDisponiveis(data, inicio, fim);
-
-        logService.info(String.format("Consulta de funcionários disponíveis em %s das %s às %s. Total: %d disponíveis.",
-                data, inicio, fim, disponiveis.size()));
 
         return disponiveis.stream()
                 .map(f -> new FuncionarioDisponivelResponseDto(

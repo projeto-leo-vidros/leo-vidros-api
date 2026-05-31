@@ -78,7 +78,7 @@ public class PedidoConclusaoService {
         return null;
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public int corrigirPedidosServicoComConclusaoInvalida() {
         List<Pedido> pedidosServico = pedidoRepository.findByServicoIsNotNull();
         Etapa etapaConcluido;
