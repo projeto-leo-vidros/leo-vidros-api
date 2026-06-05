@@ -1,5 +1,6 @@
 package com.project.extension.service;
 
+import com.project.extension.config.CacheConfig;
 import com.project.extension.entity.Etapa;
 import com.project.extension.entity.Pedido;
 import com.project.extension.entity.Servico;
@@ -8,6 +9,7 @@ import com.project.extension.repository.HistoricoEstoqueRepository;
 import com.project.extension.repository.OrcamentoRepository;
 import com.project.extension.repository.PedidoRepository;
 import com.project.extension.strategy.pedido.PedidoContext;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -35,6 +37,7 @@ public class PedidoService {
     private final LogService logService;
 
     @Transactional
+    @CacheEvict(cacheNames = {CacheConfig.FATURAMENTO_MES, CacheConfig.FATURAMENTO_ANUAL}, allEntries = true)
     public Pedido cadastrar(Pedido pedido) {
 
         Pedido processado = pedidoContext.criar(pedido);
@@ -73,6 +76,7 @@ public class PedidoService {
     }
 
     @Transactional
+    @CacheEvict(cacheNames = {CacheConfig.FATURAMENTO_MES, CacheConfig.FATURAMENTO_ANUAL}, allEntries = true)
     public Pedido editar(Integer id, Pedido pedidoAtualizar) {
         Pedido pedidoAntigo = buscarPorId(id);
         log.debug(String.valueOf(pedidoAntigo.getId()));
@@ -92,6 +96,7 @@ public class PedidoService {
     }
 
     @Transactional
+    @CacheEvict(cacheNames = {CacheConfig.FATURAMENTO_MES, CacheConfig.FATURAMENTO_ANUAL}, allEntries = true)
     public void deletar(Integer id) {
 
         Pedido pedido = buscarPorId(id);
