@@ -170,7 +170,8 @@ CREATE TABLE IF NOT EXISTS estoque (
     localizacao           VARCHAR(100),
     created_at            TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at            TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    CONSTRAINT fk_estoque_produto FOREIGN KEY (produto_id) REFERENCES produto(id)
+    CONSTRAINT fk_estoque_produto FOREIGN KEY (produto_id) REFERENCES produto(id),
+    CONSTRAINT uk_estoque_produto_localizacao UNIQUE (produto_id, localizacao)
 );
 
 -- -------------------------------------------------------------

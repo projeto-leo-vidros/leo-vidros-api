@@ -1,5 +1,6 @@
 package com.project.extension.service;
 
+import com.project.extension.config.CacheConfig;
 import com.project.extension.entity.Etapa;
 import com.project.extension.entity.Pedido;
 import com.project.extension.entity.Servico;
@@ -8,8 +9,10 @@ import com.project.extension.repository.HistoricoEstoqueRepository;
 import com.project.extension.repository.OrcamentoRepository;
 import com.project.extension.repository.PedidoRepository;
 import com.project.extension.strategy.pedido.PedidoContext;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -20,6 +23,7 @@ import java.util.List;
 import java.util.Map;
 
 @Service
+@Slf4j
 @AllArgsConstructor
 public class PedidoService {
 
@@ -32,7 +36,8 @@ public class PedidoService {
     private final EstoqueService estoqueService;
     private final LogService logService;
 
-    @Transactional(rollbackFor = Exception.class)
+    @Transactional
+    @CacheEvict(cacheNames = {CacheConfig.FATURAMENTO_MES, CacheConfig.FATURAMENTO_ANUAL}, allEntries = true)
     public Pedido cadastrar(Pedido pedido) {
 
         Pedido processado = pedidoContext.criar(pedido);
@@ -50,31 +55,48 @@ public class PedidoService {
     }
 
     public Pedido buscarPorId(Integer id) {
-        return repository.findById(id).orElseThrow(PedidoNaoEncontradoException::new);
+        return repository.findById(id).orElseThrow(() -> {
+            String msg = String.format("Pedido ID %d não encontrado.", id);
+            logService.error(msg);
+            return new PedidoNaoEncontradoException();
+        });
     }
 
     public Page<Pedido> listar(Pageable pageable) {
-        return repository.findAll(pageable);
+        Page<Pedido> pedidos = repository.findAll(pageable);
+        logService.info(String.format("Listagem de pedidos: %d registros.", pedidos.getTotalElements()));
+        return pedidos;
     }
 
     public Page<Pedido> listarPedidosPorTipoENomeDaEtapa(String nome, Pageable pageable) {
         Etapa etapa = etapaService.buscarPorTipoAndEtapa("PEDIDO", nome);
-        return repository.findAllByServico_Etapa(etapa, pageable);
+        Page<Pedido> pedidos = repository.findAllByServico_Etapa(etapa, pageable);
+        log.info("Total de pedidos encontrados: {} para etapa: {}", pedidos.getTotalElements(), etapa.getNome());
+        return pedidos;
     }
 
-    @Transactional(rollbackFor = Exception.class)
+    @Transactional
+    @CacheEvict(cacheNames = {CacheConfig.FATURAMENTO_MES, CacheConfig.FATURAMENTO_ANUAL}, allEntries = true)
     public Pedido editar(Integer id, Pedido pedidoAtualizar) {
         Pedido pedidoAntigo = buscarPorId(id);
+        log.debug(String.valueOf(pedidoAntigo.getId()));
         pedidoAntigo.setId(id);
         Pedido processado = pedidoContext.editar(pedidoAntigo, pedidoAtualizar);
 
         Pedido salvo = repository.save(processado);
         sincronizarReservasDetalheServico(salvo.getItensPedido());
 
+        logService.info(String.format(
+                "Pedido ID %d atualizado com sucesso. Total: %.2f.",
+                salvo.getId(),
+                salvo.getValorTotal()
+        ));
+
         return salvo;
     }
 
-    @Transactional(rollbackFor = Exception.class)
+    @Transactional
+    @CacheEvict(cacheNames = {CacheConfig.FATURAMENTO_MES, CacheConfig.FATURAMENTO_ANUAL}, allEntries = true)
     public void deletar(Integer id) {
 
         Pedido pedido = buscarPorId(id);
@@ -94,6 +116,11 @@ public class PedidoService {
         historicoEstoqueRepository.deleteByPedidoId(pedido.getId());
         repository.delete(pedido);
         produtosParaSincronizar.forEach(estoqueService::sincronizarReservaPorProduto);
+
+        logService.info(String.format(
+                "Pedido ID %d excluído com sucesso.",
+                id
+        ));
     }
 
     public Page<Pedido> listarPedidosPorTipo(String tipo, Pageable pageable) {

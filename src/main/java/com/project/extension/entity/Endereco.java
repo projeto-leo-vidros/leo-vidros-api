@@ -30,11 +30,24 @@ public class Endereco extends BaseEntity {
     public Endereco(String rua, String complemento, String cep, String cidade, String bairro, String uf, String pais, Integer numero) {
         this.rua = rua;
         this.complemento = complemento;
-        this.cep = cep;
+        this.cep = normalizarCep(cep);
         this.cidade = cidade;
         this.bairro = bairro;
         this.uf = uf;
         this.pais = pais;
         this.numero = numero;
+    }
+
+    /**
+     * Setter customizado (o Lombok não gera setter quando já existe um) que normaliza o CEP,
+     * removendo máscara e qualquer caractere não numérico. Evita o erro de truncamento
+     * "Data too long for column 'cep'" quando o cliente envia o CEP formatado (ex: 12345-678).
+     */
+    public void setCep(String cep) {
+        this.cep = normalizarCep(cep);
+    }
+
+    private static String normalizarCep(String cep) {
+        return cep == null ? null : cep.replaceAll("\\D", "");
     }
 }

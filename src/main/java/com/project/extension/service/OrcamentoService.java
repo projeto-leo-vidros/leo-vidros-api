@@ -35,6 +35,7 @@ public class OrcamentoService {
     private final ClienteService clienteService;
     private final StatusService statusService;
     private final ServicoService servicoService;
+    private final ServicoProdutoService servicoProdutoService;
     private final LogService logService;
     private final RabbitTemplate rabbitTemplate;
     private final OrcamentoSseService sseService;
@@ -74,6 +75,12 @@ public class OrcamentoService {
         }
 
         Orcamento salvo = repository.save(orcamento);
+
+        // Somente o orçamento APROVADO reflete na seção de produtos do serviço.
+        // Um orçamento recém-criado normalmente é RASCUNHO/ENVIADO e NÃO sobrescreve a lista.
+        if ("APROVADO".equalsIgnoreCase(statusNome)) {
+            aoAprovarOrcamento(salvo);
+        }
 
         logService.success(String.format(
                 "Orçamento ID %d criado. Número: %s, Pedido: %d, Itens: %d, Total: %s.",
@@ -172,6 +179,7 @@ public class OrcamentoService {
         if ("ENVIADO".equalsIgnoreCase(statusNome) || "EM ANALISE".equalsIgnoreCase(statusNome)) {
             avancarEtapaSeElegivel(orcamento.getPedido(), "ANÁLISE DO ORÇAMENTO");
         } else if ("APROVADO".equalsIgnoreCase(statusNome)) {
+            aoAprovarOrcamento(atualizado);
             avancarEtapaSeElegivel(orcamento.getPedido(), "ORÇAMENTO APROVADO");
         }
 
@@ -199,6 +207,17 @@ public class OrcamentoService {
 
         Orcamento atualizado = repository.save(orcamento);
 
+        boolean statusViraAprovado = "APROVADO".equalsIgnoreCase(request.statusNome());
+        boolean orcamentoEstaAprovado = atualizado.getStatus() != null
+                && "APROVADO".equalsIgnoreCase(atualizado.getStatus().getNome());
+
+        // Somente o orçamento APROVADO reflete na seção de produtos do serviço.
+        // Editar os itens de um orçamento já aprovado (sem mudar o status) propaga a alteração.
+        // Quando o status passa a APROVADO neste mesmo request, a sincronização ocorre via aoAprovarOrcamento.
+        if (request.itens() != null && orcamentoEstaAprovado && !statusViraAprovado) {
+            sincronizarServicoProduto(atualizado);
+        }
+
         logService.success(String.format(
                 "Orçamento ID %d atualizado com sucesso.",
                 atualizado.getId()
@@ -208,6 +227,7 @@ public class OrcamentoService {
             if ("ENVIADO".equalsIgnoreCase(request.statusNome()) || "EM ANALISE".equalsIgnoreCase(request.statusNome())) {
                 avancarEtapaSeElegivel(atualizado.getPedido(), "ANÁLISE DO ORÇAMENTO");
             } else if ("APROVADO".equalsIgnoreCase(request.statusNome())) {
+                aoAprovarOrcamento(atualizado);
                 avancarEtapaSeElegivel(atualizado.getPedido(), "ORÇAMENTO APROVADO");
             }
         }
@@ -239,6 +259,14 @@ public class OrcamentoService {
                     .toList();
         }
 
+        // Fonte única de verdade do pedido de serviço: servico_produto.
+        if (pedido.getServico() != null) {
+            List<OrcamentoItem> itensServico = montarItensDeServicoProduto(pedido.getServico().getId());
+            if (!itensServico.isEmpty()) {
+                return itensServico;
+            }
+        }
+
         if (pedido.getItensPedido() == null || pedido.getItensPedido().isEmpty()) {
             return List.of();
         }
@@ -266,6 +294,80 @@ public class OrcamentoService {
         }
 
         return itens;
+    }
+
+    private List<OrcamentoItem> montarItensDeServicoProduto(Integer servicoId) {
+        List<OrcamentoItem> itens = new ArrayList<>();
+        int ordem = 1;
+        for (ServicoProduto sp : servicoProdutoService.listarPorServico(servicoId)) {
+            OrcamentoItem item = new OrcamentoItem();
+            item.setProduto(sp.getProduto());
+            item.setDescricao(sp.getProduto() != null && sp.getProduto().getNome() != null
+                    ? sp.getProduto().getNome()
+                    : "Produto do serviço");
+            item.setQuantidade(sp.getQuantidadePlanejada() != null ? sp.getQuantidadePlanejada() : BigDecimal.ZERO);
+            item.setPrecoUnitario(sp.getPrecoUnitario() != null ? sp.getPrecoUnitario() : BigDecimal.ZERO);
+            item.setDesconto(BigDecimal.ZERO);
+            item.setObservacao(sp.getObservacao());
+            item.setOrdem(sp.getOrdem() != null ? sp.getOrdem() : ordem);
+            ordem++;
+            itens.add(item);
+        }
+        return itens;
+    }
+
+    /**
+     * Regra de aprovação exclusiva de orçamento.
+     *
+     * Um pedido pode ter vários orçamentos, mas apenas um pode ficar APROVADO. Ao aprovar um:
+     * 1. Todos os demais orçamentos ativos do mesmo pedido são automaticamente marcados como RECUSADO.
+     * 2. Os produtos do orçamento aprovado passam a refletir na seção de produtos do serviço
+     *    ({@code servico_produto}, fonte única de verdade) — sobrescrevendo qualquer estimativa anterior.
+     */
+    private void aoAprovarOrcamento(Orcamento aprovado) {
+        if (aprovado.getPedido() != null) {
+            Status recusado = statusService.buscarOuCriarPorTipoENome("ORCAMENTO", "RECUSADO");
+            List<Orcamento> irmaos = repository.findByPedidoIdAndAtivoTrue(aprovado.getPedido().getId());
+            for (Orcamento outro : irmaos) {
+                if (outro.getId().equals(aprovado.getId())) {
+                    continue;
+                }
+                String statusAtual = outro.getStatus() != null ? outro.getStatus().getNome() : "";
+                if ("APROVADO".equalsIgnoreCase(statusAtual) || "RECUSADO".equalsIgnoreCase(statusAtual)) {
+                    continue;
+                }
+                outro.setStatus(recusado);
+                repository.save(outro);
+                logService.info(String.format(
+                        "Orçamento ID %d reprovado automaticamente por aprovação do Orçamento ID %d no mesmo pedido.",
+                        outro.getId(), aprovado.getId()));
+            }
+        }
+
+        sincronizarServicoProduto(aprovado);
+    }
+
+    /**
+     * Sincronização reversa: itens do orçamento (com produto vinculado, incluindo extras)
+     * passam a ser a fonte de verdade da seção de produtos do serviço.
+     */
+    private void sincronizarServicoProduto(Orcamento orcamento) {
+        if (orcamento.getPedido() == null || orcamento.getPedido().getServico() == null) {
+            return;
+        }
+
+        Integer servicoId = orcamento.getPedido().getServico().getId();
+        List<ServicoProdutoService.SyncItem> itens = orcamento.getItens().stream()
+                .filter(item -> item.getProduto() != null && item.getProduto().getId() != null)
+                .map(item -> new ServicoProdutoService.SyncItem(
+                        item.getProduto().getId(),
+                        item.getQuantidade(),
+                        item.getPrecoUnitario(),
+                        item.getObservacao()
+                ))
+                .toList();
+
+        servicoProdutoService.sincronizarComProdutos(servicoId, itens);
     }
 
     private OrcamentoItem criarItemOrcamento(OrcamentoItemRequestDto itemDto) {

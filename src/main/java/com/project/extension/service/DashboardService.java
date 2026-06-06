@@ -1,5 +1,6 @@
 package com.project.extension.service;
 
+import com.project.extension.config.CacheConfig;
 import com.project.extension.controller.dashboard.dto.*;
 import com.project.extension.repository.AgendamentoRepository;
 import com.project.extension.repository.EstoqueRepository;
@@ -7,6 +8,7 @@ import com.project.extension.repository.OrcamentoRepository;
 import com.project.extension.repository.PedidoRepository;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -78,6 +80,7 @@ public class DashboardService {
         return agendamentoRepository.proximosAgendamentos();
     }
 
+    @Cacheable(cacheNames = CacheConfig.FATURAMENTO_MES)
     public FaturamentoMesResponseDto getFaturamentoMes() {
         BigDecimal mesAtual = pedidoRepository.sumFaturamentoMesAtual();
         BigDecimal mesAnterior = pedidoRepository.sumFaturamentoMesAnterior();
@@ -97,6 +100,7 @@ public class DashboardService {
         return new FaturamentoMesResponseDto(mesAtual, percentual);
     }
 
+    @Cacheable(cacheNames = CacheConfig.FATURAMENTO_ANUAL)
     public FaturamentoAnualResponseDto getFaturamentoAnual() {
         int ano = LocalDate.now().getYear();
         List<Object[]> raw = pedidoRepository.sumFaturamentoPorMesAnoAtual();

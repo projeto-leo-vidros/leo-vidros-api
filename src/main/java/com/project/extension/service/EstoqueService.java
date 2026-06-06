@@ -4,9 +4,7 @@ import com.project.extension.entity.*;
 import com.project.extension.exception.naoencontrado.EstoqueNaoEncontradoException;
 import com.project.extension.exception.naoencontrado.ProdutoNaoEncontradoException;
 import com.project.extension.exception.naopodesernegativo.EstoqueNaoPodeSerNegativoException;
-import com.project.extension.repository.AgendamentoProdutoRepository;
 import com.project.extension.repository.EstoqueRepository;
-import com.project.extension.repository.ItemPedidoRepository;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -24,8 +22,7 @@ import java.math.BigDecimal;
 public class EstoqueService {
 
     private final EstoqueRepository repository;
-    private final AgendamentoProdutoRepository agendamentoProdutoRepository;
-    private final ItemPedidoRepository itemPedidoRepository;
+    private final com.project.extension.repository.ServicoProdutoRepository servicoProdutoRepository;
     private final ProdutoService produtoService;
     private final HistoricoEstoqueService historicoService;
     private final UsuarioService usuarioService;
@@ -352,20 +349,15 @@ public class EstoqueService {
                 .orElseThrow(EstoqueNaoEncontradoException::new);
 
         BigDecimal totalAtual = estoque.getQuantidadeTotal() != null ? estoque.getQuantidadeTotal() : BigDecimal.ZERO;
-        BigDecimal reservadoAgendamento = agendamentoProdutoRepository
-                .somarReservasAtivasPorProdutoId(produto.getId());
-        BigDecimal reservadoDetalheServico = itemPedidoRepository
-                .somarReservasDetalheServicoAtivasPorProdutoId(produto.getId(), pedidoIdIgnorado);
+        BigDecimal reservadoServico = servicoProdutoRepository
+                .somarReservasAtivasServicoPorProdutoId(produto.getId());
 
-        if (reservadoAgendamento == null) reservadoAgendamento = BigDecimal.ZERO;
-        if (reservadoDetalheServico == null) reservadoDetalheServico = BigDecimal.ZERO;
+        if (reservadoServico == null) reservadoServico = BigDecimal.ZERO;
 
-        BigDecimal totalReservado = reservadoAgendamento
-                .add(reservadoDetalheServico)
-                .add(quantidadeAdicional);
+        BigDecimal totalReservado = reservadoServico.add(quantidadeAdicional);
 
         if (totalReservado.compareTo(totalAtual) > 0) {
-            BigDecimal disponivelParaReserva = totalAtual.subtract(reservadoAgendamento.add(reservadoDetalheServico));
+            BigDecimal disponivelParaReserva = totalAtual.subtract(reservadoServico);
             if (disponivelParaReserva.compareTo(BigDecimal.ZERO) < 0) {
                 disponivelParaReserva = BigDecimal.ZERO;
             }
@@ -384,15 +376,14 @@ public class EstoqueService {
 
         BigDecimal totalAtual = estoque.getQuantidadeTotal() != null ? estoque.getQuantidadeTotal() : BigDecimal.ZERO;
         BigDecimal reservadoAtual = estoque.getReservado() != null ? estoque.getReservado() : BigDecimal.ZERO;
-        BigDecimal reservadoAgendamento = agendamentoProdutoRepository
-                .somarReservasAtivasPorProdutoId(estoque.getProduto().getId());
-        BigDecimal reservadoDetalheServico = itemPedidoRepository
-                .somarReservasDetalheServicoAtivasPorProdutoId(estoque.getProduto().getId(), null);
 
-        if (reservadoAgendamento == null) reservadoAgendamento = BigDecimal.ZERO;
-        if (reservadoDetalheServico == null) reservadoDetalheServico = BigDecimal.ZERO;
+        // Fonte única de verdade da reserva: servico_produto de serviços com agendamento de SERVIÇO ativo.
+        BigDecimal reservadoServico = servicoProdutoRepository
+                .somarReservasAtivasServicoPorProdutoId(estoque.getProduto().getId());
 
-        BigDecimal reservadoAtivo = reservadoAgendamento.add(reservadoDetalheServico);
+        if (reservadoServico == null) reservadoServico = BigDecimal.ZERO;
+
+        BigDecimal reservadoAtivo = reservadoServico;
         if (reservadoAtivo.compareTo(totalAtual) > 0) reservadoAtivo = totalAtual;
 
         if (reservadoAtual.compareTo(reservadoAtivo) != 0) {

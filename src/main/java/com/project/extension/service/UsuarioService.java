@@ -32,12 +32,16 @@ public class UsuarioService {
     @Transactional(rollbackFor = Exception.class)
     public Usuario salvar(Usuario usuario) {
             boolean isNovo = (usuario.getId() == null);
-            
+
+            if (isNovo && usuario.getSenha() != null && !usuario.getSenha().isBlank()) {
+                usuario.setSenha(passwordEncoder.encode(usuario.getSenha()));
+            }
+
             if (usuario.getEndereco() != null) {
                 Endereco endereco = enderecoService.cadastrar(usuario.getEndereco());
                 usuario.setEndereco(endereco);
             }
-            
+
             Usuario salvo = repository.save(usuario);
 
             String acao = isNovo ? "criado" : "salvo";
