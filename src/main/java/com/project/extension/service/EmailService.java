@@ -3,11 +3,13 @@ package com.project.extension.service;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 
 @Service
+@Slf4j
 @AllArgsConstructor
 public class EmailService {
 
@@ -23,7 +25,9 @@ public class EmailService {
             helper.setText(conteudoHtml, true);
 
             mailSender.send(message);
+            log.info("E-mail enviado com sucesso para {} — assunto: \"{}\".", para, assunto);
         } catch (MessagingException e) {
+            log.error("Falha ao enviar e-mail para {} — assunto: \"{}\".", para, assunto, e);
             throw new RuntimeException("Falha ao enviar email", e);
         }
     }
