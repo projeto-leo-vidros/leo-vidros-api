@@ -34,13 +34,14 @@ public class SolicitacaoProcessamentoService {
             String senhaTemporaria = gerarSenhaTemporaria();
             log.debug("Senha temporária gerada: {}", senhaTemporaria);
 
-            String senhaCriptografada = usuarioService.encodePassword(senhaTemporaria);
-
+            // Passa a senha em texto puro: o UsuarioService.salvar() é o único responsável por
+            // criptografar (BCrypt) ao criar o usuário. Encriptar aqui causaria BCrypt duplo e
+            // invalidaria o login com a senha temporária enviada por e-mail.
             Usuario usuario = new Usuario(
                     solicitacao.getNome(),
                     solicitacao.getEmail(),
                     solicitacao.getCpf(),
-                    senhaCriptografada,
+                    senhaTemporaria,
                     solicitacao.getTelefone(),
                     true
             );

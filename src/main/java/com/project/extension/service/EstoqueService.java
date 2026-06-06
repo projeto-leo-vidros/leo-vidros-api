@@ -27,31 +27,39 @@ public class EstoqueService {
     private final HistoricoEstoqueService historicoService;
     private final UsuarioService usuarioService;
 
+    // A transação fica nos métodos públicos (pontos de entrada do proxy). O @Transactional num
+    // método private/auto-invocado é ignorado pelo Spring, o que faria as queries com
+    // @Lock(PESSIMISTIC_WRITE) rodarem fora de transação.
+    @Transactional(rollbackFor = Exception.class)
     public Estoque entrada(Estoque request) {
         return movimentarEstoque(request, TipoMovimentacao.ENTRADA, null, null, null, null);
     }
 
+    @Transactional(rollbackFor = Exception.class)
     public Estoque entrada(Estoque request, String observacao) {
         return movimentarEstoque(request, TipoMovimentacao.ENTRADA, null, null, null, observacao);
     }
 
+    @Transactional(rollbackFor = Exception.class)
     public Estoque saida(Estoque request) {
         return movimentarEstoque(request, TipoMovimentacao.SAIDA, null, OrigemMovimentacao.MANUAL, null, null);
     }
 
+    @Transactional(rollbackFor = Exception.class)
     public Estoque saida(Estoque request, String observacao) {
         return movimentarEstoque(request, TipoMovimentacao.SAIDA, null, OrigemMovimentacao.MANUAL, null, observacao);
     }
 
+    @Transactional(rollbackFor = Exception.class)
     public void saida(Estoque request, Pedido pedido) {
         movimentarEstoque(request, TipoMovimentacao.SAIDA, pedido, OrigemMovimentacao.PEDIDO, null, null);
     }
 
+    @Transactional(rollbackFor = Exception.class)
     public Estoque saida(Estoque request, OrigemMovimentacao origemMovimentacao, MotivoPerda motivoPerda) {
         return movimentarEstoque(request, TipoMovimentacao.SAIDA, null, origemMovimentacao, motivoPerda, null);
     }
 
-    @Transactional(rollbackFor = Exception.class)
     private Estoque movimentarEstoque(
             Estoque request,
             TipoMovimentacao tipo,
