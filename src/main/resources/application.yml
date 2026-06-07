@@ -55,8 +55,8 @@ spring:
 
   cache:
     type: redis
-    redis:
-      time-to-live: ${CACHE_TTL_MS:300000}
+    # O TTL é definido programaticamente no CacheConfig (RedisCacheManager por cache).
+    # spring.cache.redis.time-to-live é ignorado quando há um RedisCacheManager customizado.
 
   rabbitmq:
     host: ${RABBITMQ_HOST:localhost}
