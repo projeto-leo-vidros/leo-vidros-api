@@ -23,6 +23,7 @@ public class Cliente extends BaseEntity {
     private Integer id;
 
     private String nome;
+    @Column(columnDefinition = "CHAR(11)")
     private String cpf;
     private String email;
     private String telefone;

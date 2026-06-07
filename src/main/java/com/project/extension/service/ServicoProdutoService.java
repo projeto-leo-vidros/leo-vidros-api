@@ -161,7 +161,7 @@ public class ServicoProdutoService {
         sp.setServico(servico);
         sp.setProduto(produto);
         sp.setQuantidadePlanejada(BigDecimal.ZERO);
-        sp.setPrecoUnitario(produto.getPreco() != null ? BigDecimal.valueOf(produto.getPreco()) : BigDecimal.ZERO);
+        sp.setPrecoUnitario(produto.getPreco() != null ? produto.getPreco() : BigDecimal.ZERO);
         sp.setAtivo(true);
         return sp;
     }

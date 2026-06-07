@@ -115,10 +115,14 @@ public class OrcamentoControllerImpl implements OrcamentoControllerDoc {
         byte[] pdf = pdfCacheService.obterPorNumeroOrcamento(numeroOrcamento);
 
         if (pdf == null) {
-            service.buscarPorNumeroOrcamento(numeroOrcamento).ifPresent(o -> {
-                log.warn("[PDF] Cache miss por número — numero='{}' id={}. Acionando re-geração.", numeroOrcamento, o.getId());
-                service.gerarPdf(o.getId());
-            });
+            var orcamento = service.buscarPorNumeroOrcamento(numeroOrcamento);
+            // Número inexistente → 404 (antes retornava 202 mesmo sem orçamento, induzindo o cliente ao erro).
+            if (orcamento.isEmpty()) {
+                log.warn("[PDF] Número de orçamento inexistente — numero='{}'.", numeroOrcamento);
+                return ResponseEntity.notFound().build();
+            }
+            log.warn("[PDF] Cache miss por número — numero='{}' id={}. Acionando re-geração.", numeroOrcamento, orcamento.get().getId());
+            service.gerarPdf(orcamento.get().getId());
             return ResponseEntity.status(HttpStatus.ACCEPTED)
                     .body(Map.of("mensagem", "PDF não encontrado no cache. Re-geração iniciada."));
         }

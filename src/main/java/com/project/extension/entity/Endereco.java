@@ -1,5 +1,6 @@
 package com.project.extension.entity;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -23,6 +24,7 @@ public class Endereco extends BaseEntity {
     private String cep;
     private String cidade;
     private String bairro;
+    @Column(columnDefinition = "CHAR(2)")
     private String uf;
     private String pais;
     private Integer numero;

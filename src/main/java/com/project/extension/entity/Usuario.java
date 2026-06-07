@@ -18,6 +18,7 @@ public class Usuario extends BaseEntity {
 
     private String nome;
     private String email;
+    @Column(columnDefinition = "CHAR(11)")
     private String cpf;
     private String senha;
     private String telefone;

@@ -1,5 +1,7 @@
 package com.project.extension.config;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import io.github.bucket4j.Bandwidth;
 import io.github.bucket4j.Bucket;
 import jakarta.servlet.Filter;
@@ -13,13 +15,21 @@ import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.time.Duration;
-import java.util.concurrent.ConcurrentHashMap;
 
 @Component
 public class RateLimitingFilter implements Filter {
 
-    private final ConcurrentHashMap<String, Bucket> loginBuckets = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<String, Bucket> solicitacoesBuckets = new ConcurrentHashMap<>();
+    // Cache com TTL + tamanho máximo: buckets de IPs ociosos são removidos automaticamente,
+    // evitando crescimento ilimitado de memória (DoS por consumo de heap). O expireAfterAccess
+    // é maior que a janela de refill para não evictar um IP que ainda está em rate-limit.
+    private final Cache<String, Bucket> loginBuckets = Caffeine.newBuilder()
+            .maximumSize(50_000)
+            .expireAfterAccess(Duration.ofMinutes(10))
+            .build();
+    private final Cache<String, Bucket> solicitacoesBuckets = Caffeine.newBuilder()
+            .maximumSize(50_000)
+            .expireAfterAccess(Duration.ofMinutes(30))
+            .build();
 
     @Override
     public void doFilter(ServletRequest req, ServletResponse res, FilterChain chain)
@@ -33,7 +43,7 @@ public class RateLimitingFilter implements Filter {
 
         if ("POST".equalsIgnoreCase(method) && path.endsWith("/auth/login")) {
             String ip = resolveClientIp(request);
-            Bucket bucket = loginBuckets.computeIfAbsent(ip, k -> buildLoginBucket());
+            Bucket bucket = loginBuckets.get(ip, k -> buildLoginBucket());
             if (!bucket.tryConsume(1)) {
                 response.setStatus(429);
                 response.setContentType("application/json");
@@ -42,7 +52,7 @@ public class RateLimitingFilter implements Filter {
             }
         } else if ("POST".equalsIgnoreCase(method) && path.endsWith("/solicitacoes")) {
             String ip = resolveClientIp(request);
-            Bucket bucket = solicitacoesBuckets.computeIfAbsent(ip, k -> buildSolicitacoesBucket());
+            Bucket bucket = solicitacoesBuckets.get(ip, k -> buildSolicitacoesBucket());
             if (!bucket.tryConsume(1)) {
                 response.setStatus(429);
                 response.setContentType("application/json");
