@@ -3,6 +3,7 @@ package com.project.extension.repository;
 import com.project.extension.controller.dashboard.dto.ProximosAgendamentosResponseDto;
 import com.project.extension.entity.Agendamento;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -173,4 +174,8 @@ public interface AgendamentoRepository extends JpaRepository<Agendamento, Intege
         AND a.statusAgendamento.nome NOT IN ('CANCELADO', 'INATIVO')
     """)
     List<Agendamento> findAgendamentosServicoAtivosByServico(@Param("servicoId") Integer servicoId);
+
+    @Modifying
+    @Query(value = "DELETE FROM agendamento_funcionario WHERE funcionario_id = :funcionarioId", nativeQuery = true)
+    void desvincularFuncionarioDeAgendamentos(@Param("funcionarioId") Integer funcionarioId);
 }

@@ -21,9 +21,12 @@ public class ClienteMapper {
     public Cliente toEntity(ClienteRequestDto dto){
         if(dto == null) return null;
 
+        String cpfSanitizado = dto.cpf() != null ? dto.cpf().replaceAll("\\D", "") : null;
+        String cpf = cpfSanitizado != null && cpfSanitizado.isBlank() ? null : cpfSanitizado;
+
         Cliente cliente = new Cliente(
                 dto.nome(),
-                dto.cpf(),
+                cpf,
                 dto.email(),
                 dto.telefone(),
                 dto.status()

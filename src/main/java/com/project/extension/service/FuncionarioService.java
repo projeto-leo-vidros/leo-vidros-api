@@ -100,6 +100,7 @@ public class FuncionarioService {
     @Transactional(rollbackFor = Exception.class)
     public void deletar(Integer id) {
         this.buscarPorId(id);
+        agendamentoRepository.desvincularFuncionarioDeAgendamentos(id);
         repository.deleteById(id);
     }
 
