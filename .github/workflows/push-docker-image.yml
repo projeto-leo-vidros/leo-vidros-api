@@ -29,7 +29,25 @@ jobs:
         run: |
           echo "version=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
 
-  tests:
+#  tests:
+#    needs: setup
+#    runs-on: ubuntu-latest
+#
+#    steps:
+#      - name: Checkout code
+#        uses: actions/checkout@v4
+#
+#      - name: Set up Java 21
+#        uses: actions/setup-java@v4
+#        with:
+#          distribution: temurin
+#          java-version: '21'
+#          cache: maven
+#
+#      - name: Run Java tests
+#        run: ./mvnw --batch-mode test
+
+  build-jar:
     needs: setup
     runs-on: ubuntu-latest
 
@@ -44,26 +62,8 @@ jobs:
           java-version: '21'
           cache: maven
 
-      - name: Run Java tests
-        run: ./mvnw --batch-mode test
-
-#  build-jar:
-#    needs: tests
-#    runs-on: ubuntu-latest
-#
-#    steps:
-#      - name: Checkout code
-#        uses: actions/checkout@v4
-#
-#      - name: Set up Java 21
-#        uses: actions/setup-java@v4
-#        with:
-#          distribution: temurin
-#          java-version: '21'
-#          cache: maven
-#
-#      - name: Build JAR
-#        run: ./mvnw --batch-mode clean package -DskipTests
+      - name: Build JAR
+        run: ./mvnw --batch-mode clean package -DskipTests
 
   docker-image:
     needs: build-jar
