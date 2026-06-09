@@ -158,6 +158,7 @@ public class OrcamentoService {
 
     @Transactional(rollbackFor = Exception.class)
     public Orcamento atualizarStatus(Integer id, String statusNome, String pdfPath) {
+        statusNome = normalizarStatus(statusNome);
         Orcamento orcamento = buscarPorId(id);
         Status status = statusService.buscarOuCriarPorTipoENome("ORCAMENTO", statusNome);
         orcamento.setStatus(status);
@@ -190,7 +191,9 @@ public class OrcamentoService {
     public Orcamento atualizar(Integer id, OrcamentoRequestDto request) {
         Orcamento orcamento = buscarPorId(id);
 
-        ifPresent(request.statusNome(), nome -> {
+        String statusNomeNorm = normalizarStatus(request.statusNome());
+
+        ifPresent(statusNomeNorm, nome -> {
             Status status = statusService.buscarOuCriarPorTipoENome("ORCAMENTO", nome);
             orcamento.setStatus(status);
         });
@@ -207,7 +210,7 @@ public class OrcamentoService {
 
         Orcamento atualizado = repository.save(orcamento);
 
-        boolean statusViraAprovado = "APROVADO".equalsIgnoreCase(request.statusNome());
+        boolean statusViraAprovado = "APROVADO".equalsIgnoreCase(statusNomeNorm);
         boolean orcamentoEstaAprovado = atualizado.getStatus() != null
                 && "APROVADO".equalsIgnoreCase(atualizado.getStatus().getNome());
 
@@ -223,10 +226,10 @@ public class OrcamentoService {
                 atualizado.getId()
         ));
 
-        if (request.statusNome() != null) {
-            if ("ENVIADO".equalsIgnoreCase(request.statusNome()) || "EM ANALISE".equalsIgnoreCase(request.statusNome())) {
+        if (statusNomeNorm != null) {
+            if ("ENVIADO".equalsIgnoreCase(statusNomeNorm) || "EM ANALISE".equalsIgnoreCase(statusNomeNorm)) {
                 avancarEtapaSeElegivel(atualizado.getPedido(), "ANÁLISE DO ORÇAMENTO");
-            } else if ("APROVADO".equalsIgnoreCase(request.statusNome())) {
+            } else if ("APROVADO".equalsIgnoreCase(statusNomeNorm)) {
                 aoAprovarOrcamento(atualizado);
                 avancarEtapaSeElegivel(atualizado.getPedido(), "ORÇAMENTO APROVADO");
             }
@@ -385,6 +388,10 @@ public class OrcamentoService {
         }
 
         return item;
+    }
+
+    private String normalizarStatus(String nome) {
+        return nome != null ? nome.replace('_', ' ') : null;
     }
 
     private <T> void ifPresent(T value, Consumer<T> setter) {

@@ -135,13 +135,6 @@ public class PedidoServicoStrategy implements PedidoStrategy {
                     throw new RegraNegocioException(
                             "Para avançar para 'Análise do Orçamento', é necessário ter ao menos um orçamento cadastrado para este pedido.");
                 }
-                boolean temAgendamentoOrcamento = antigo.getAgendamentos() != null &&
-                        antigo.getAgendamentos().stream()
-                                .anyMatch(a -> TipoAgendamento.ORCAMENTO.equals(a.getTipoAgendamento()));
-                if (!temAgendamentoOrcamento) {
-                    throw new RegraNegocioException(
-                            "Para avançar para 'Análise do Orçamento', é necessário ter ao menos um agendamento de orçamento cadastrado.");
-                }
             } else if (nomeNorm.contains("ORCAMENTO APROVADO")) {
                 long qtdOrcamentos = orcamentoRepository.countByPedidoIdAndAtivoTrue(origem.getId());
                 if (qtdOrcamentos < 1) {
@@ -154,6 +147,10 @@ public class PedidoServicoStrategy implements PedidoStrategy {
 
             Etapa etapa = etapaService.buscarPorTipoAndEtapa("PEDIDO", nomeEtapa);
             antigo.setEtapa(etapa);
+
+            if (nomeNorm.contains("ANALISE DO ORCAMENTO")) {
+                sincronizarStatusOrcamento(origem.getId(), "EM ANALISE");
+            }
         }
 
         String nomeStatus = destino.getStatus() != null ? destino.getStatus().getNome() : "ATIVO";
@@ -230,6 +227,19 @@ public class PedidoServicoStrategy implements PedidoStrategy {
                 .toUpperCase()
                 .replace('_', ' ')
                 .trim();
+    }
+
+    private void sincronizarStatusOrcamento(Integer pedidoId, String novoStatusNome) {
+        List<Orcamento> orcamentos = orcamentoRepository.findByPedidoIdAndAtivoTrue(pedidoId);
+        if (orcamentos.isEmpty()) return;
+
+        Status novoStatus = statusService.buscarOuCriarPorTipoENome("ORCAMENTO", novoStatusNome);
+        Orcamento maisRecente = orcamentos.get(orcamentos.size() - 1);
+        String statusAtual = maisRecente.getStatus() != null ? normalizar(maisRecente.getStatus().getNome()) : "";
+        if (!normalizar(novoStatusNome).equals(statusAtual)) {
+            maisRecente.setStatus(novoStatus);
+            orcamentoRepository.save(maisRecente);
+        }
     }
 
     private boolean isAgendamentoBloqueante(String status) {
