@@ -130,10 +130,10 @@ public class PedidoServicoStrategy implements PedidoStrategy {
             String nomeNorm = normalizar(nomeEtapa);
 
             if (nomeNorm.contains("ANALISE DO ORCAMENTO")) {
-                long qtdOrcamentos = orcamentoRepository.countByPedidoIdAndAtivoTrue(origem.getId());
-                if (qtdOrcamentos < 1) {
+                long qtdEmAnalise = orcamentoRepository.countByPedidoIdAndAtivoTrueAndStatusNome(origem.getId(), "EM ANALISE");
+                if (qtdEmAnalise < 1) {
                     throw new RegraNegocioException(
-                            "Para avançar para 'Análise do Orçamento', é necessário ter ao menos um orçamento cadastrado para este pedido.");
+                            "Para avançar para 'Análise do Orçamento', é necessário ter ao menos um orçamento com status 'Em Análise'.");
                 }
             } else if (nomeNorm.contains("ORCAMENTO APROVADO")) {
                 long qtdOrcamentos = orcamentoRepository.countByPedidoIdAndAtivoTrue(origem.getId());
