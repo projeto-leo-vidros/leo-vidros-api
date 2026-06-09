@@ -11,7 +11,7 @@ server:
     include-binding-errors: never
     include-stacktrace: never
     include-exception: false
-  forward-headers-strategy: framework
+    forward-headers-strategy: native
 
 spring:
   application:
