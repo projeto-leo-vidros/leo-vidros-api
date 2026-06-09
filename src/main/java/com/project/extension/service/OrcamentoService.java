@@ -181,7 +181,7 @@ public class OrcamentoService {
             avancarEtapaSeElegivel(orcamento.getPedido(), "ANÁLISE DO ORÇAMENTO");
         } else if ("APROVADO".equalsIgnoreCase(statusNome)) {
             aoAprovarOrcamento(atualizado);
-            avancarEtapaSeElegivel(orcamento.getPedido(), "ORÇAMENTO APROVADO");
+            avancarEtapaSeElegivel(orcamento.getPedido(), "AGUARDANDO AGENDA DE SERVIÇO/INSTALAÇÃO");
         }
 
         return atualizado;
@@ -231,7 +231,7 @@ public class OrcamentoService {
                 avancarEtapaSeElegivel(atualizado.getPedido(), "ANÁLISE DO ORÇAMENTO");
             } else if ("APROVADO".equalsIgnoreCase(statusNomeNorm)) {
                 aoAprovarOrcamento(atualizado);
-                avancarEtapaSeElegivel(atualizado.getPedido(), "ORÇAMENTO APROVADO");
+                avancarEtapaSeElegivel(atualizado.getPedido(), "AGUARDANDO AGENDA DE SERVIÇO/INSTALAÇÃO");
             }
         }
 

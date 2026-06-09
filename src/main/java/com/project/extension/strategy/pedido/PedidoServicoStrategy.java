@@ -135,11 +135,11 @@ public class PedidoServicoStrategy implements PedidoStrategy {
                     throw new RegraNegocioException(
                             "Para avançar para 'Análise do Orçamento', é necessário ter ao menos um orçamento com status 'Em Análise'.");
                 }
-            } else if (nomeNorm.contains("ORCAMENTO APROVADO")) {
-                long qtdOrcamentos = orcamentoRepository.countByPedidoIdAndAtivoTrue(origem.getId());
-                if (qtdOrcamentos < 1) {
+            } else if (nomeNorm.contains("AGUARDANDO AGENDA DE SERVICO")) {
+                long qtdAprovados = orcamentoRepository.countByPedidoIdAndAtivoTrueAndStatusNome(origem.getId(), "APROVADO");
+                if (qtdAprovados < 1) {
                     throw new RegraNegocioException(
-                            "Para avançar para 'Orçamento Aprovado', é necessário ter ao menos um orçamento cadastrado para este pedido.");
+                            "Para avançar para 'Aguardando Agenda de Serviço', é necessário ter ao menos um orçamento aprovado.");
                 }
             } else if (nomeNorm.contains("CONCLUIDO") || nomeNorm.contains("CONCLUÍDO")) {
                 pedidoConclusaoService.validarConclusao(antigo);
