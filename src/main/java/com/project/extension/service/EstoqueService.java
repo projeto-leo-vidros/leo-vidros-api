@@ -4,9 +4,7 @@ import com.project.extension.entity.*;
 import com.project.extension.exception.naoencontrado.EstoqueNaoEncontradoException;
 import com.project.extension.exception.naoencontrado.ProdutoNaoEncontradoException;
 import com.project.extension.exception.naopodesernegativo.EstoqueNaoPodeSerNegativoException;
-import com.project.extension.repository.AgendamentoProdutoRepository;
 import com.project.extension.repository.EstoqueRepository;
-import com.project.extension.repository.ItemPedidoRepository;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -14,6 +12,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 
@@ -23,33 +22,40 @@ import java.math.BigDecimal;
 public class EstoqueService {
 
     private final EstoqueRepository repository;
-    private final AgendamentoProdutoRepository agendamentoProdutoRepository;
-    private final ItemPedidoRepository itemPedidoRepository;
+    private final com.project.extension.repository.ServicoProdutoRepository servicoProdutoRepository;
     private final ProdutoService produtoService;
     private final HistoricoEstoqueService historicoService;
     private final UsuarioService usuarioService;
-    private final LogService logService;
 
+    // A transação fica nos métodos públicos (pontos de entrada do proxy). O @Transactional num
+    // método private/auto-invocado é ignorado pelo Spring, o que faria as queries com
+    // @Lock(PESSIMISTIC_WRITE) rodarem fora de transação.
+    @Transactional(rollbackFor = Exception.class)
     public Estoque entrada(Estoque request) {
         return movimentarEstoque(request, TipoMovimentacao.ENTRADA, null, null, null, null);
     }
 
+    @Transactional(rollbackFor = Exception.class)
     public Estoque entrada(Estoque request, String observacao) {
         return movimentarEstoque(request, TipoMovimentacao.ENTRADA, null, null, null, observacao);
     }
 
+    @Transactional(rollbackFor = Exception.class)
     public Estoque saida(Estoque request) {
         return movimentarEstoque(request, TipoMovimentacao.SAIDA, null, OrigemMovimentacao.MANUAL, null, null);
     }
 
+    @Transactional(rollbackFor = Exception.class)
     public Estoque saida(Estoque request, String observacao) {
         return movimentarEstoque(request, TipoMovimentacao.SAIDA, null, OrigemMovimentacao.MANUAL, null, observacao);
     }
 
+    @Transactional(rollbackFor = Exception.class)
     public void saida(Estoque request, Pedido pedido) {
         movimentarEstoque(request, TipoMovimentacao.SAIDA, pedido, OrigemMovimentacao.PEDIDO, null, null);
     }
 
+    @Transactional(rollbackFor = Exception.class)
     public Estoque saida(Estoque request, OrigemMovimentacao origemMovimentacao, MotivoPerda motivoPerda) {
         return movimentarEstoque(request, TipoMovimentacao.SAIDA, null, origemMovimentacao, motivoPerda, null);
     }
@@ -88,7 +94,6 @@ public class EstoqueService {
         Estoque salvo = repository.save(estoque);
 
         registrarHistorico(salvo, tipo, pedido, origem, motivoPerda, quantidade, produto, observacao);
-        logMovimentacao(tipo, quantidade, produto, salvo);
 
         return salvo;
     }
@@ -101,7 +106,7 @@ public class EstoqueService {
     }
 
     private Estoque buscarOuCriarEstoque(Produto produto, String localizacao) {
-        return repository.findByProdutoAndLocalizacao(produto, localizacao)
+        return repository.findByProdutoAndLocalizacaoForUpdate(produto, localizacao)
                 .orElseGet(() -> {
                     Estoque novo = new Estoque();
                     novo.setProduto(produto);
@@ -109,19 +114,12 @@ public class EstoqueService {
                     novo.setQuantidadeTotal(BigDecimal.ZERO);
                     novo.setQuantidadeDisponivel(BigDecimal.ZERO);
                     novo.setReservado(BigDecimal.ZERO);
-
-                    logService.warning(String.format(
-                            "Novo registro de estoque criado implicitamente para Produto ID %d em %s.",
-                            produto.getId(), localizacao
-                    ));
-
                     return novo;
                 });
     }
 
     private BigDecimal validarQuantidade(BigDecimal quantidade) {
         if (quantidade == null || quantidade.compareTo(BigDecimal.ZERO) <= 0) {
-            logService.error("Tentativa de movimentação com quantidade inválida.");
             throw new IllegalArgumentException("A quantidade movimentada deve ser maior que zero.");
         }
         return quantidade;
@@ -212,20 +210,6 @@ public class EstoqueService {
         historicoService.cadastrar(historico);
     }
 
-    private void logMovimentacao(
-            TipoMovimentacao tipo,
-            BigDecimal quantidade,
-            Produto produto,
-            Estoque estoque
-    ) {
-        Usuario usuario = getUsuarioLogado();
-
-        logService.info(String.format(
-                "Movimentação de estoque (Tipo: %s) por Usuário ID %d. Produto: '%s', Quantidade: %f, Novo Total: %f.",
-                tipo, usuario.getId(), produto.getNome(), quantidade, estoque.getQuantidadeTotal()
-        ));
-    }
-
     public Page<Estoque> listar(Pageable pageable) {
         return repository.findAll(pageable);
     }
@@ -237,8 +221,9 @@ public class EstoqueService {
         return estoque;
     }
 
+    @Transactional(rollbackFor = Exception.class)
     public void reservarProduto(Produto produto, BigDecimal quantidade) {
-        Estoque estoque = repository.findByProdutoId(produto.getId())
+        Estoque estoque = repository.findByProdutoIdForUpdate(produto.getId())
                 .orElseThrow(EstoqueNaoEncontradoException::new);
         sincronizarReservaComAgendamentosAtivos(estoque);
 
@@ -272,8 +257,9 @@ public class EstoqueService {
         return usuarioService.buscarPorEmail(email);
     }
 
+    @Transactional(rollbackFor = Exception.class)
     public void liberarProduto(Produto produto, BigDecimal quantidade) {
-        Estoque estoque = repository.findByProdutoId(produto.getId())
+        Estoque estoque = repository.findByProdutoIdForUpdate(produto.getId())
                 .orElseThrow(EstoqueNaoEncontradoException::new);
         sincronizarReservaComAgendamentosAtivos(estoque);
 
@@ -287,14 +273,11 @@ public class EstoqueService {
 
         repository.save(estoque);
         atualizarStatusProduto(estoque.getProduto(), estoque.getQuantidadeDisponivel());
-
-        logService.info(String.format(
-                "Reserva liberada para Produto ID %d. Quantidade liberada: %s. Novo disponível: %s.",
-                produto.getId(), quantidade, estoque.getQuantidadeDisponivel()));
     }
 
+    @Transactional(rollbackFor = Exception.class)
     public void finalizarReservaProduto(Produto produto, BigDecimal quantidadeReservada, BigDecimal quantidadeUtilizada) {
-        Estoque estoque = repository.findByProdutoId(produto.getId())
+        Estoque estoque = repository.findByProdutoIdForUpdate(produto.getId())
                 .orElseThrow(EstoqueNaoEncontradoException::new);
 
         sincronizarReservaComAgendamentosAtivos(estoque);
@@ -346,15 +329,6 @@ public class EstoqueService {
                     "Baixa de estoque por conclusao de agendamento"
             );
         }
-
-        logService.info(String.format(
-                "Reserva finalizada para Produto ID %d. Reservado baixado: %s. Utilizado: %s. Novo total: %s. Novo disponivel: %s.",
-                produto.getId(),
-                reservada.stripTrailingZeros().toPlainString(),
-                utilizada.stripTrailingZeros().toPlainString(),
-                salvo.getQuantidadeTotal().stripTrailingZeros().toPlainString(),
-                salvo.getQuantidadeDisponivel().stripTrailingZeros().toPlainString()
-        ));
     }
 
     public Estoque buscarEstoquePorIdProduto(Produto produto) {
@@ -383,20 +357,15 @@ public class EstoqueService {
                 .orElseThrow(EstoqueNaoEncontradoException::new);
 
         BigDecimal totalAtual = estoque.getQuantidadeTotal() != null ? estoque.getQuantidadeTotal() : BigDecimal.ZERO;
-        BigDecimal reservadoAgendamento = agendamentoProdutoRepository
-                .somarReservasAtivasPorProdutoId(produto.getId());
-        BigDecimal reservadoDetalheServico = itemPedidoRepository
-                .somarReservasDetalheServicoAtivasPorProdutoId(produto.getId(), pedidoIdIgnorado);
+        BigDecimal reservadoServico = servicoProdutoRepository
+                .somarReservasAtivasServicoPorProdutoId(produto.getId());
 
-        if (reservadoAgendamento == null) reservadoAgendamento = BigDecimal.ZERO;
-        if (reservadoDetalheServico == null) reservadoDetalheServico = BigDecimal.ZERO;
+        if (reservadoServico == null) reservadoServico = BigDecimal.ZERO;
 
-        BigDecimal totalReservado = reservadoAgendamento
-                .add(reservadoDetalheServico)
-                .add(quantidadeAdicional);
+        BigDecimal totalReservado = reservadoServico.add(quantidadeAdicional);
 
         if (totalReservado.compareTo(totalAtual) > 0) {
-            BigDecimal disponivelParaReserva = totalAtual.subtract(reservadoAgendamento.add(reservadoDetalheServico));
+            BigDecimal disponivelParaReserva = totalAtual.subtract(reservadoServico);
             if (disponivelParaReserva.compareTo(BigDecimal.ZERO) < 0) {
                 disponivelParaReserva = BigDecimal.ZERO;
             }
@@ -415,15 +384,14 @@ public class EstoqueService {
 
         BigDecimal totalAtual = estoque.getQuantidadeTotal() != null ? estoque.getQuantidadeTotal() : BigDecimal.ZERO;
         BigDecimal reservadoAtual = estoque.getReservado() != null ? estoque.getReservado() : BigDecimal.ZERO;
-        BigDecimal reservadoAgendamento = agendamentoProdutoRepository
-                .somarReservasAtivasPorProdutoId(estoque.getProduto().getId());
-        BigDecimal reservadoDetalheServico = itemPedidoRepository
-                .somarReservasDetalheServicoAtivasPorProdutoId(estoque.getProduto().getId(), null);
 
-        if (reservadoAgendamento == null) reservadoAgendamento = BigDecimal.ZERO;
-        if (reservadoDetalheServico == null) reservadoDetalheServico = BigDecimal.ZERO;
+        // Fonte única de verdade da reserva: servico_produto de serviços com agendamento de SERVIÇO ativo.
+        BigDecimal reservadoServico = servicoProdutoRepository
+                .somarReservasAtivasServicoPorProdutoId(estoque.getProduto().getId());
 
-        BigDecimal reservadoAtivo = reservadoAgendamento.add(reservadoDetalheServico);
+        if (reservadoServico == null) reservadoServico = BigDecimal.ZERO;
+
+        BigDecimal reservadoAtivo = reservadoServico;
         if (reservadoAtivo.compareTo(totalAtual) > 0) reservadoAtivo = totalAtual;
 
         if (reservadoAtual.compareTo(reservadoAtivo) != 0) {

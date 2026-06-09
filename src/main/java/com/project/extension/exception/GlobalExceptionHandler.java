@@ -99,9 +99,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(RegraNegocioException.class)
     public ResponseEntity<ApiResponse<Void>> handleRegraNegocio(RegraNegocioException ex, HttpServletRequest request) {
-        logService.warning(String.format("Regra de Negócio violada (400). Erro: %s. Path: %s. Mensagem: %s",
-                ex.getClass().getSimpleName(), request.getRequestURI(), ex.getMessage()));
-        log.warn("Regra de negócio: {}", ex.getMessage());
+        log.warn("Regra de negócio violada em {}: {}", request.getRequestURI(), ex.getMessage());
         return buildErrorResponse(HttpStatus.BAD_REQUEST, "REGRA_NEGOCIO", ex.getMessage(), null, request);
     }
 
@@ -144,9 +142,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(NaoEncontradoException.class)
     public ResponseEntity<ApiResponse<Void>> handleNaoEncontrado(NaoEncontradoException ex, HttpServletRequest request) {
-        logService.error(String.format("Recurso não encontrado (404). Erro: %s. Path: %s. Mensagem: %s",
-                ex.getClass().getSimpleName(), request.getRequestURI(), ex.getMessage()));
-        log.warn("Não encontrado: {}", ex.getMessage());
+        log.warn("Recurso não encontrado em {}: {}", request.getRequestURI(), ex.getMessage());
         return buildErrorResponse(HttpStatus.NOT_FOUND, "NOT_FOUND", ex.getMessage(), null, request);
     }
 
@@ -163,17 +159,13 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(NaoPodeSerNegativoException.class)
     public ResponseEntity<ApiResponse<Void>> handleNaoPodeSerNegativo(NaoPodeSerNegativoException ex, HttpServletRequest request) {
-        logService.warning(String.format("Conflito de regra de negócio (409). Erro: %s. Path: %s. Mensagem: %s",
-                ex.getClass().getSimpleName(), request.getRequestURI(), ex.getMessage()));
-        log.warn("Valor negativo: {}", ex.getMessage());
+        log.warn("Conflito de estoque/valor em {}: {}", request.getRequestURI(), ex.getMessage());
         return buildErrorResponse(HttpStatus.CONFLICT, "CONFLICT", ex.getMessage(), null, request);
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ApiResponse<Void>> handleDataIntegrity(DataIntegrityViolationException ex, HttpServletRequest request) {
-        logService.error(String.format("Violação de integridade (409). Path: %s. Mensagem: %s",
-                request.getRequestURI(), ex.getMessage()));
-        log.warn("Violação de integridade em {}: {}", request.getRequestURI(), ex.getMessage());
+        log.warn("Violação de integridade de dados em {}: {}", request.getRequestURI(), ex.getMessage());
         return buildErrorResponse(HttpStatus.CONFLICT, "DATA_INTEGRITY_VIOLATION",
                 "Conflito de dados: registro já existente ou violação de restrição.", null, request);
     }

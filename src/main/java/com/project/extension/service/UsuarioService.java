@@ -29,15 +29,19 @@ public class UsuarioService {
     private final PasswordEncoder passwordEncoder;
 
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public Usuario salvar(Usuario usuario) {
             boolean isNovo = (usuario.getId() == null);
-            
+
+            if (isNovo && usuario.getSenha() != null && !usuario.getSenha().isBlank()) {
+                usuario.setSenha(passwordEncoder.encode(usuario.getSenha()));
+            }
+
             if (usuario.getEndereco() != null) {
                 Endereco endereco = enderecoService.cadastrar(usuario.getEndereco());
                 usuario.setEndereco(endereco);
             }
-            
+
             Usuario salvo = repository.save(usuario);
 
             String acao = isNovo ? "criado" : "salvo";
@@ -49,20 +53,16 @@ public class UsuarioService {
 
     public Usuario buscarPorId(Integer id) {
         return repository.findById(id).orElseThrow(() -> {
-            String mensagem = String.format("Falha na busca: Usuário com ID %d não encontrado.", id);
-            logService.error(mensagem);
-            log.error("Usuário com ID {} não encontrado", id);
+            log.warn("Usuário com ID {} não encontrado", id);
             return new UsuarioNaoEncontradoException();
         });
     }
 
     public Page<Usuario> buscarTodos(Pageable pageable) {
-        Page<Usuario> page = repository.findAll(pageable);
-        logService.info(String.format("Busca por todos os usuários realizada. Total de usuários: %d.", page.getTotalElements()));
-        return page;
+        return repository.findAll(pageable);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void deletar(Integer id) {
         Usuario usuarioParaDeletar = this.buscarPorId(id);
         try {
@@ -74,10 +74,6 @@ public class UsuarioService {
             log.warn("Erro ao deletar endereço durante deleção de usuário", e);
         }
         repository.deleteById(id);
-
-        String mensagem = String.format("Usuário ID %d (E-mail: %s) deletado com sucesso.",
-                id, usuarioParaDeletar.getEmail());
-        logService.info(mensagem);
     }
 
     public Usuario buscarPorEmail(@NotBlank String email) {
@@ -100,7 +96,6 @@ public class UsuarioService {
             logService.warning(String.format("Usuário ID %d: Senha alterada (apenas registro de ação).", destino.getId()));
         }
 
-        log.trace("Campos do usuário atualizados em memória.");
     }
 
     private Endereco atualizarEndereco(Endereco antigo, Endereco novo) {
@@ -116,22 +111,14 @@ public class UsuarioService {
         return enderecoService.buscarPorId(antigo.getId());
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public Usuario editar(Usuario origem, Integer id) {
         Usuario destino = this.buscarPorId(id);
 
         this.atualizarCampos(destino, origem);
         destino.setEndereco(this.atualizarEndereco(destino.getEndereco(), origem.getEndereco()));
 
-        Usuario atualizado = repository.save(destino);
-
-        logService.info(String.format(
-                "Usuário ID %d atualizado com sucesso. Nome: %s.",
-                atualizado.getId(),
-                atualizado.getNome()
-        ));
-
-        return atualizado;
+        return repository.save(destino);
     }
 
     public String encodePassword(String senha) {
@@ -166,6 +153,5 @@ public class UsuarioService {
     private void enviarEmailComSenha(Usuario usuario, String senha) {
         String conteudoHtml = emailService.gerarEmailSenhaTemporaria(usuario.getNome(), senha);
         emailService.enviarEmail(usuario.getEmail(), "Senha Temporária", conteudoHtml);
-        logService.info(String.format("Email de senha temporária com credenciais enviado para: %s.", usuario.getEmail()));
     }
 }

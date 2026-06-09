@@ -9,44 +9,27 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
-import java.util.List;
-
 @Service
 @Slf4j
 @AllArgsConstructor
 public class HistoricoEstoqueService {
     private final HistoricoEstoqueRepository repository;
-    private final LogService logService;
 
     public HistoricoEstoque cadastrar(HistoricoEstoque historicoEstoque){
         if (historicoEstoque.getUsuario() == null || historicoEstoque.getEstoque() == null) {
-            logService.error("Tentativa de cadastrar HistóricoEstoque sem Usuário ou Estoque associado.");
             throw new IllegalArgumentException("Usuário e Estoque são obrigatórios para registrar histórico.");
         }
-        HistoricoEstoque salvo = repository.save(historicoEstoque);
-        String mensagem = String.format("Novo registro de HistóricoEstoque ID %d criado com sucesso. Tipo: %s, Qtd: %f. (Auditado).",
-                salvo.getId(),
-                salvo.getTipoMovimentacao(),
-                salvo.getQuantidade());
-        logService.info(mensagem);
-        log.info("Histórico de Estoque ID {} salvo com sucesso.", salvo.getId());
-
-        return salvo;
+        return repository.save(historicoEstoque);
     }
 
     public Page<HistoricoEstoque> listar(Pageable pageable) {
-        Page<HistoricoEstoque> historicoEstoques = repository.findAll(pageable);
-        logService.info(String.format("Busca por todos os registros de Histórico Estoque realizada. Total: %d.", historicoEstoques.getTotalElements()));
-        return historicoEstoques;
+        return repository.findAll(pageable);
     }
 
     public Page<HistoricoEstoque> buscarPorEstoqueId(Integer estoqueId, Pageable pageable) {
         Page<HistoricoEstoque> historicos = repository.findByEstoqueId(estoqueId, pageable);
 
         if (historicos.isEmpty()) {
-            logService.error(String.format("Nenhum histórico encontrado para o estoque ID %d.", estoqueId));
-            log.error("Nenhum histórico encontrado para o estoque ID {}", estoqueId);
             throw new HistoricoEstoqueNaoEncontradoException();
         }
 

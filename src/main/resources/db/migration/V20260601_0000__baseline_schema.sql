@@ -74,7 +74,8 @@ CREATE TABLE IF NOT EXISTS usuario (
     endereco_id INT,
     created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    CONSTRAINT fk_usuario_endereco FOREIGN KEY (endereco_id) REFERENCES endereco(id)
+    CONSTRAINT fk_usuario_endereco  FOREIGN KEY (endereco_id) REFERENCES endereco(id),
+    CONSTRAINT uq_usuario_email     UNIQUE (email)
 );
 
 CREATE TABLE IF NOT EXISTS cliente (
@@ -85,7 +86,9 @@ CREATE TABLE IF NOT EXISTS cliente (
     telefone   VARCHAR(20),
     status     VARCHAR(10) DEFAULT 'ATIVO' COMMENT 'ATIVO | INATIVO',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT uq_cliente_cpf   UNIQUE (cpf),
+    CONSTRAINT uq_cliente_email UNIQUE (email)
 );
 
 CREATE TABLE IF NOT EXISTS cliente_endereco (
@@ -131,7 +134,8 @@ CREATE TABLE IF NOT EXISTS solicitacao (
     status_id  INT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    CONSTRAINT fk_solicitacao_status FOREIGN KEY (status_id) REFERENCES status(id)
+    CONSTRAINT fk_solicitacao_status  FOREIGN KEY (status_id) REFERENCES status(id),
+    CONSTRAINT uq_solicitacao_email   UNIQUE (email)
 );
 
 -- -------------------------------------------------------------
@@ -170,7 +174,8 @@ CREATE TABLE IF NOT EXISTS estoque (
     localizacao           VARCHAR(100),
     created_at            TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at            TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    CONSTRAINT fk_estoque_produto FOREIGN KEY (produto_id) REFERENCES produto(id)
+    CONSTRAINT fk_estoque_produto FOREIGN KEY (produto_id) REFERENCES produto(id),
+    CONSTRAINT uk_estoque_produto_localizacao UNIQUE (produto_id, localizacao)
 );
 
 -- -------------------------------------------------------------
@@ -244,6 +249,7 @@ CREATE TABLE IF NOT EXISTS historico_estoque (
 
 CREATE TABLE IF NOT EXISTS agendamento (
     id                  INT PRIMARY KEY AUTO_INCREMENT,
+    ativo               BOOLEAN NOT NULL DEFAULT TRUE,
     servico_id          INT NOT NULL,
     endereco_id         INT,
     status_id           INT,
@@ -323,5 +329,26 @@ CREATE TABLE IF NOT EXISTS orcamento_item (
     CONSTRAINT fk_orcamento_item_orcamento FOREIGN KEY (orcamento_id) REFERENCES orcamento(id),
     CONSTRAINT fk_orcamento_item_produto   FOREIGN KEY (produto_id)   REFERENCES produto(id)
 );
+
+CREATE TABLE IF NOT EXISTS refresh_token (
+    id          BIGINT PRIMARY KEY AUTO_INCREMENT,
+    token       VARCHAR(255) NOT NULL UNIQUE,
+    usuario_id  INT NOT NULL,
+    expiracao   TIMESTAMP NOT NULL,
+    CONSTRAINT fk_refresh_usuario FOREIGN KEY (usuario_id) REFERENCES usuario(id) ON DELETE CASCADE
+);
+
+-- -------------------------------------------------------------
+-- Índices de busca frequente
+-- -------------------------------------------------------------
+
+CREATE INDEX idx_cliente_nome        ON cliente(nome);
+CREATE INDEX idx_funcionario_nome    ON funcionario(nome);
+CREATE INDEX idx_agendamento_data    ON agendamento(data_agendamento);
+CREATE INDEX idx_ag_func_funcionario ON agendamento_funcionario(funcionario_id);
+CREATE INDEX idx_historico_data      ON historico_estoque(data_movimentacao);
+CREATE INDEX idx_pedido_cliente      ON pedido(cliente_id);
+CREATE INDEX idx_item_pedido_pedido  ON item_pedido(pedido_id);
+CREATE INDEX idx_refresh_token_token ON refresh_token(token);
 
 SET FOREIGN_KEY_CHECKS = 1;

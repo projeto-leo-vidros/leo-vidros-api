@@ -5,6 +5,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -23,7 +24,7 @@ public class Servico {
     private String descricao;
 
     @Column(name = "preco_base")
-    private Double precoBase;
+    private BigDecimal precoBase;
 
     private Boolean ativo;
 
@@ -41,7 +42,7 @@ public class Servico {
     @OneToMany(mappedBy = "servico", cascade = CascadeType.ALL)
     private List<Agendamento> agendamentos = new ArrayList<>();
 
-    public Servico(String nome, String descricao, Double precoBase, Boolean ativo) {
+    public Servico(String nome, String descricao, BigDecimal precoBase, Boolean ativo) {
         this.nome = nome;
         this.descricao = descricao;
         this.precoBase = precoBase;

@@ -10,11 +10,13 @@ import com.project.extension.rabbitmq.queue.PdfCacheService;
 import com.project.extension.service.OrcamentoService;
 import com.project.extension.service.OrcamentoSseService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -22,6 +24,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.Map;
 
+@Slf4j
 @RestController
 @RequestMapping("/orcamentos")
 @RequiredArgsConstructor
@@ -91,7 +94,13 @@ public class OrcamentoControllerImpl implements OrcamentoControllerDoc {
                 : null;
 
         if (pdf == null) {
-            return ResponseEntity.notFound().build();
+            log.warn("[PDF] Cache miss — id={} numero='{}'. Acionando re-geração.", id, numeroOrcamento);
+            service.gerarPdf(id);
+            return ResponseEntity.status(HttpStatus.ACCEPTED)
+                    .body(Map.of(
+                            "mensagem", "PDF não encontrado no cache. Re-geração iniciada.",
+                            "orcamentoId", id
+                    ));
         }
 
         return ResponseEntity.ok()
@@ -106,7 +115,16 @@ public class OrcamentoControllerImpl implements OrcamentoControllerDoc {
         byte[] pdf = pdfCacheService.obterPorNumeroOrcamento(numeroOrcamento);
 
         if (pdf == null) {
-            return ResponseEntity.notFound().build();
+            var orcamento = service.buscarPorNumeroOrcamento(numeroOrcamento);
+            // Número inexistente → 404 (antes retornava 202 mesmo sem orçamento, induzindo o cliente ao erro).
+            if (orcamento.isEmpty()) {
+                log.warn("[PDF] Número de orçamento inexistente — numero='{}'.", numeroOrcamento);
+                return ResponseEntity.notFound().build();
+            }
+            log.warn("[PDF] Cache miss por número — numero='{}' id={}. Acionando re-geração.", numeroOrcamento, orcamento.get().getId());
+            service.gerarPdf(orcamento.get().getId());
+            return ResponseEntity.status(HttpStatus.ACCEPTED)
+                    .body(Map.of("mensagem", "PDF não encontrado no cache. Re-geração iniciada."));
         }
 
         return ResponseEntity.ok()

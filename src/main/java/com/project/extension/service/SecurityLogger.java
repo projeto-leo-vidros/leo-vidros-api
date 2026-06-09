@@ -6,30 +6,28 @@ import org.springframework.stereotype.Service;
 @Slf4j
 @Service
 public class SecurityLogger {
-    
-    public void logLoginAttempt(String email, String ip, boolean success) {
-        if (success) {
-            log.info("Login successful for user: {}, IP: {}", email, ip);
+
+    public void logLoginAttempt(String email, String ip, boolean sucesso) {
+        if (sucesso) {
+            log.info("Login bem-sucedido — email: {}, IP: {}", email, ip);
         } else {
-            log.warn("Login failed for user: {}, IP: {}", email, ip);
+            log.warn("Falha de login — email: {}, IP: {}", email, ip);
         }
     }
-    
-    public void logUnauthorizedAccess(String email, String resource, String ip) {
-        log.warn("Unauthorized access attempt - User: {}, Resource: {}, IP: {}", 
-                email, resource, ip);
+
+    public void logUnauthorizedAccess(String email, String recurso, String ip) {
+        log.warn("Acesso não autorizado — email: {}, recurso: {}, IP: {}", email, recurso, ip);
     }
-    
-    public void logDataAccess(String user, String entity, Integer id) {
-        log.info("Data access - User: {}, Entity: {}, ID: {}", user, entity, id);
+
+    public void logDataAccess(String usuario, String entidade, Integer id) {
+        log.debug("Acesso a dado — usuário: {}, entidade: {}, ID: {}", usuario, entidade, id);
     }
-    
-    public void logDataModification(String user, String entity, String operation) {
-        log.info("Data modification - User: {}, Entity: {}, Operation: {}", 
-                user, entity, operation);
+
+    public void logDataModification(String usuario, String entidade, String operacao) {
+        log.info("Modificação de dado — usuário: {}, entidade: {}, operação: {}", usuario, entidade, operacao);
     }
-    
-    public void logSecurityEvent(String event, String details) {
-        log.warn("Security event: {} - Details: {}", event, details);
+
+    public void logSecurityEvent(String evento, String detalhes) {
+        log.warn("Evento de segurança: {} — {}", evento, detalhes);
     }
 }

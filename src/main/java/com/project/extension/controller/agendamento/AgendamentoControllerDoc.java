@@ -118,6 +118,27 @@ public interface AgendamentoControllerDoc {
     })
     ResponseEntity<String> deletar(@PathVariable Integer id);
 
+    @PutMapping("/{id}/concluir")
+    @Operation(summary = "Concluir agendamento de serviço", description = """
+            Conclui um agendamento de serviço informando as quantidades efetivamente utilizadas de cada produto.
+            ---
+            Grava a utilização na lista única do serviço, efetiva a saída de estoque do utilizado e libera o
+            excedente reservado.
+            """)
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Agendamento concluído com sucesso",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = AgendamentoResponseDto.class)
+                    )),
+            @ApiResponse(responseCode = "400", description = "Quando o agendamento não é de serviço ou o corpo é inválido",
+                    content = @Content()),
+            @ApiResponse(responseCode = "404", description = "Quando o agendamento não existe", content = @Content())
+    })
+    ResponseEntity<AgendamentoResponseDto> concluir(
+            @PathVariable Integer id,
+            @Valid @RequestBody com.project.extension.controller.agendamento.dto.ConcluirAgendamentoRequestDto request);
+
     @DeleteMapping("/{agendamentoId}/funcionarios/{funcionarioId}")
     @Operation(summary = "Remover funcionário de um agendamento", description = """
             Remove um funcionário de um agendamento.

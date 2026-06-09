@@ -17,11 +17,16 @@ public interface OrcamentoRepository extends JpaRepository<Orcamento, Integer> {
 
     Page<Orcamento> findByPedidoIdAndAtivoTrue(Integer pedidoId, Pageable pageable);
 
+    List<Orcamento> findByPedidoIdAndAtivoTrue(Integer pedidoId);
+
     List<Orcamento> findByClienteIdAndAtivoTrue(Integer clienteId);
 
     Optional<Orcamento> findByNumeroOrcamento(String numeroOrcamento);
 
     long countByPedidoIdAndAtivoTrue(Integer pedidoId);
+
+    @Query("SELECT COUNT(o) FROM Orcamento o WHERE o.pedido.id = :pedidoId AND o.ativo = true AND UPPER(o.status.nome) = UPPER(:statusNome)")
+    long countByPedidoIdAndAtivoTrueAndStatusNome(@Param("pedidoId") Integer pedidoId, @Param("statusNome") String statusNome);
 
     void deleteByPedidoId(Integer pedidoId);
 

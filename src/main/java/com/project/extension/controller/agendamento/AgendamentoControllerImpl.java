@@ -67,6 +67,18 @@ public class AgendamentoControllerImpl implements AgendamentoControllerDoc{
     }
 
     @Override
+    public ResponseEntity<AgendamentoResponseDto> concluir(
+            Integer id, com.project.extension.controller.agendamento.dto.ConcluirAgendamentoRequestDto request) {
+        java.util.List<AgendamentoService.ProdutoUtilizado> utilizados = request.produtos() == null
+                ? java.util.List.of()
+                : request.produtos().stream()
+                        .map(p -> new AgendamentoService.ProdutoUtilizado(p.produtoId(), p.quantidadeUtilizada()))
+                        .toList();
+        Agendamento concluido = service.concluirComUtilizacao(id, utilizados);
+        return ResponseEntity.ok(mapper.toResponse(concluido));
+    }
+
+    @Override
     public ResponseEntity<AgendamentoResponseDto> removerFuncionario(Integer agendamentoId, Integer funcionarioId) {
         Agendamento atualizado = service.removerFuncionario(agendamentoId, funcionarioId);
         return ResponseEntity.ok(mapper.toResponse(atualizado));

@@ -1,7 +1,6 @@
 package com.project.extension.service;
 
 import com.project.extension.entity.MetricaEstoque;
-import com.project.extension.entity.Produto;
 import com.project.extension.exception.naoencontrado.MetricaNaoEncontradaException;
 import com.project.extension.repository.MetricaEstoqueRepository;
 import lombok.AllArgsConstructor;
@@ -18,11 +17,8 @@ public class MetricaEstoqueService {
     private final MetricaEstoqueRepository repository;
 
     public MetricaEstoque cadastrar(MetricaEstoque metricaEstoque) {
-        MetricaEstoque metricaEstoqueSalvo = repository.save(metricaEstoque);
-        log.info("Métrica de estoque salvo com sucesso!");
-        return metricaEstoqueSalvo;
+        return repository.save(metricaEstoque);
     }
-
 
     public MetricaEstoque buscarPorId(Integer id) {
         return repository.findById(id).orElseThrow(() -> {
@@ -32,24 +28,17 @@ public class MetricaEstoqueService {
     }
 
     public List<MetricaEstoque> listar() {
-        List<MetricaEstoque> metricaEstoques = repository.findAll();
-        log.info("Total de métricas de estoque encontradas: {}", metricaEstoques.size());
-        return metricaEstoques;
+        return repository.findAll();
     }
 
     public MetricaEstoque editar(MetricaEstoque origem, Integer id) {
         MetricaEstoque destino = this.buscarPorId(id);
-
         this.atualizarDadosBasicos(destino, origem);
-
-        MetricaEstoque produtoAtualizado = repository.save(destino);
-        log.info("Atributo Produto atualizado com sucesso!");
-        return produtoAtualizado;
+        return repository.save(destino);
     }
 
     public void deletar(Integer id) {
         repository.deleteById(id);
-        log.info("Atributo Produto deletado com sucesso");
     }
 
     private void atualizarDadosBasicos(MetricaEstoque destino, MetricaEstoque origem) {

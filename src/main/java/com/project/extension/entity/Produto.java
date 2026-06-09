@@ -5,13 +5,14 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @Entity
 @Getter
 @Setter
 @NoArgsConstructor
-public class Produto {
+public class Produto extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
@@ -22,7 +23,7 @@ public class Produto {
     @Column(name = "unidade_medida")
     private String unidademedida;
 
-    private Double preco;
+    private BigDecimal preco;
     private Boolean ativo;
 
     @OneToMany(mappedBy = "produto")
@@ -34,7 +35,7 @@ public class Produto {
     @OneToOne(cascade = CascadeType.ALL)
     private MetricaEstoque metricaEstoque;
 
-    public Produto(String nome, String descricao, String unidademedida, Double preco, Boolean ativo) {
+    public Produto(String nome, String descricao, String unidademedida, BigDecimal preco, Boolean ativo) {
         this.nome = nome;
         this.descricao = descricao;
         this.unidademedida = unidademedida;

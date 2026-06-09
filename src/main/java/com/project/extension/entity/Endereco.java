@@ -1,5 +1,6 @@
 package com.project.extension.entity;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -12,7 +13,7 @@ import lombok.Setter;
 @Getter
 @Setter
 @NoArgsConstructor
-public class Endereco {
+public class Endereco extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -23,6 +24,7 @@ public class Endereco {
     private String cep;
     private String cidade;
     private String bairro;
+    @Column(columnDefinition = "CHAR(2)")
     private String uf;
     private String pais;
     private Integer numero;
@@ -30,11 +32,24 @@ public class Endereco {
     public Endereco(String rua, String complemento, String cep, String cidade, String bairro, String uf, String pais, Integer numero) {
         this.rua = rua;
         this.complemento = complemento;
-        this.cep = cep;
+        this.cep = normalizarCep(cep);
         this.cidade = cidade;
         this.bairro = bairro;
         this.uf = uf;
         this.pais = pais;
         this.numero = numero;
+    }
+
+    /**
+     * Setter customizado (o Lombok não gera setter quando já existe um) que normaliza o CEP,
+     * removendo máscara e qualquer caractere não numérico. Evita o erro de truncamento
+     * "Data too long for column 'cep'" quando o cliente envia o CEP formatado (ex: 12345-678).
+     */
+    public void setCep(String cep) {
+        this.cep = normalizarCep(cep);
+    }
+
+    private static String normalizarCep(String cep) {
+        return cep == null ? null : cep.replaceAll("\\D", "");
     }
 }

@@ -4,10 +4,9 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
 
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -15,13 +14,16 @@ import java.util.List;
 @Getter
 @Setter
 @NoArgsConstructor
-public class Cliente {
+@SQLDelete(sql = "UPDATE cliente SET status = 'INATIVO' WHERE id = ?")
+@SQLRestriction("status <> 'INATIVO'")
+public class Cliente extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy =  GenerationType.IDENTITY)
     private Integer id;
 
     private String nome;
+    @Column(columnDefinition = "CHAR(11)")
     private String cpf;
     private String email;
     private String telefone;

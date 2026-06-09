@@ -3,6 +3,7 @@ package com.project.extension.repository;
 import com.project.extension.controller.dashboard.dto.ProximosAgendamentosResponseDto;
 import com.project.extension.entity.Agendamento;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -106,8 +107,10 @@ public interface AgendamentoRepository extends JpaRepository<Agendamento, Intege
     Double taxaOcupacaoServicos();
 
     @Query("""
-        SELECT a FROM Agendamento a
-        JOIN a.funcionarios f
+        SELECT DISTINCT a FROM Agendamento a
+        JOIN FETCH a.funcionarios f
+        LEFT JOIN FETCH a.servico s
+        LEFT JOIN FETCH a.statusAgendamento
         WHERE f.id = :funcionarioId
         AND a.dataAgendamento BETWEEN :dataInicio AND :dataFim
         ORDER BY a.dataAgendamento ASC, a.inicioAgendamento ASC
@@ -156,6 +159,8 @@ public interface AgendamentoRepository extends JpaRepository<Agendamento, Intege
     @Query("""
         SELECT a
         FROM Agendamento a
+        JOIN FETCH a.servico
+        JOIN FETCH a.statusAgendamento
         WHERE a.servico.id = :servicoId
         AND a.statusAgendamento.nome NOT IN ('CANCELADO', 'INATIVO')
         ORDER BY a.dataAgendamento ASC, a.inicioAgendamento ASC
@@ -169,4 +174,8 @@ public interface AgendamentoRepository extends JpaRepository<Agendamento, Intege
         AND a.statusAgendamento.nome NOT IN ('CANCELADO', 'INATIVO')
     """)
     List<Agendamento> findAgendamentosServicoAtivosByServico(@Param("servicoId") Integer servicoId);
+
+    @Modifying
+    @Query(value = "DELETE FROM agendamento_funcionario WHERE funcionario_id = :funcionarioId", nativeQuery = true)
+    void desvincularFuncionarioDeAgendamentos(@Param("funcionarioId") Integer funcionarioId);
 }

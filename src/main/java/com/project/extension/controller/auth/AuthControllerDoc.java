@@ -14,6 +14,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 
@@ -67,4 +68,15 @@ public interface AuthControllerDoc {
                     content = @Content())
     })
     ResponseEntity<String> logout(HttpServletResponse httpResponse, HttpServletRequest httpRequest);
+
+    @PostMapping("/refresh")
+    @Operation(summary = "Renovar access token", description = "Usa o refreshToken em cookie para emitir um novo accessToken sem exigir novo login.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Novo access token emitido"),
+            @ApiResponse(responseCode = "400", description = "Refresh token inválido ou expirado")
+    })
+    ResponseEntity<AuthResponseDto> refresh(
+            @CookieValue(name = "refreshToken", required = false) String refreshToken,
+            HttpServletResponse httpResponse
+    );
 }

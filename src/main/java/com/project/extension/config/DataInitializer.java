@@ -7,6 +7,7 @@ import com.project.extension.repository.CategoriaRepository;
 import com.project.extension.repository.EtapaRepository;
 import com.project.extension.repository.PedidoRepository;
 import com.project.extension.repository.StatusRepository;
+import com.project.extension.service.AgendamentoService;
 import com.project.extension.service.PedidoConclusaoService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,6 +27,7 @@ public class DataInitializer implements ApplicationRunner {
     private final StatusRepository statusRepository;
     private final PedidoRepository pedidoRepository;
     private final PedidoConclusaoService pedidoConclusaoService;
+    private final AgendamentoService agendamentoService;
 
     @Override
     public void run(ApplicationArguments args) {
@@ -33,6 +35,14 @@ public class DataInitializer implements ApplicationRunner {
         seedEtapas();
         seedStatus();
         corrigirPedidosConcluidos();
+        corrigirEtapaOrcamentoEmExecucao();
+    }
+
+    private void corrigirEtapaOrcamentoEmExecucao() {
+        int corrigidos = agendamentoService.corrigirEtapaOrcamentoEmExecucao();
+        if (corrigidos > 0) {
+            log.info("{} serviço(s) com etapa 'AGENDAMENTO EM EXECUÇÃO' indevida (agendamento de orçamento) revertidos para 'ORÇAMENTO AGENDADO'.", corrigidos);
+        }
     }
 
     private void corrigirPedidosConcluidos() {

@@ -13,7 +13,6 @@ public class SecurityService {
             throw new SecurityException("ID de recurso inválido");
         }
         
-        log.debug("Validação de acesso - ID: {}, Operação: {}", resourceId, operation);
     }
     
     public boolean isValidId(Integer id) {

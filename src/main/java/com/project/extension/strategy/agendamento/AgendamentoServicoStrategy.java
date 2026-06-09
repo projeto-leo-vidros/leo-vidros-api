@@ -7,6 +7,7 @@ import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+import java.math.BigDecimal;
 import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.List;
@@ -21,6 +22,8 @@ public class AgendamentoServicoStrategy implements AgendamentoStrategy {
     private final EtapaService etapaService;
     private final StatusService statusService;
     private final ServicoService servicoService;
+    private final ServicoProdutoService servicoProdutoService;
+    private final EstoqueService estoqueService;
 
     private String normalizarTexto(String valor) {
         if (valor == null) {
@@ -95,13 +98,19 @@ public class AgendamentoServicoStrategy implements AgendamentoStrategy {
             agendamento.setFuncionarios(funcionariosSalvos);
         }
 
-        // Mantém os produtos passados para fins de rastreamento (sem reserva de estoque)
-        if (agendamento.getAgendamentoProdutos() == null) {
-            agendamento.setAgendamentoProdutos(new ArrayList<>());
-        } else {
-            for (AgendamentoProduto ap : agendamento.getAgendamentoProdutos()) {
-                ap.setAgendamento(agendamento);
+        // A lista de produtos do serviço vive em servico_produto (fonte única de verdade).
+        // Não criamos mais agendamento_produto para SERVIÇO.
+        agendamento.setAgendamentoProdutos(new ArrayList<>());
+
+        // Reserva de estoque: para cada produto planejado, incrementa a reserva.
+        // Falha (HTTP 4xx) se algum item não tiver estoque suficiente.
+        List<ServicoProduto> produtosServico = servicoProdutoService.listarPorServico(servicoSalvo.getId());
+        for (ServicoProduto sp : produtosServico) {
+            BigDecimal planejada = sp.getQuantidadePlanejada();
+            if (sp.getProduto() == null || planejada == null || planejada.compareTo(BigDecimal.ZERO) <= 0) {
+                continue;
             }
+            estoqueService.reservarProduto(sp.getProduto(), planejada);
         }
 
         if (agendamento.getEndereco() != null) {

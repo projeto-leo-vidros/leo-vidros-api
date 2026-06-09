@@ -2,7 +2,6 @@ package com.project.extension.service;
 
 import com.project.extension.entity.*;
 import com.project.extension.exception.naoencontrado.ClienteNaoEncontradoException;
-import com.project.extension.exception.naoencontrado.UsuarioNaoEncontradoException;
 import com.project.extension.repository.ClienteRepository;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -35,20 +34,16 @@ public class ClienteService {
     public Cliente buscarPorId(Integer id) {
         return repository.findById(id).orElseThrow(() -> {
             String mensagem = String.format("Falha na busca: Cliente com ID %d não encontrado.", id);
-            logService.error(mensagem);
-
             log.warn(mensagem);
             return new ClienteNaoEncontradoException();
         });
     }
 
     public Page<Cliente> listar(Pageable pageable) {
-        Page<Cliente> clientes = repository.findAll(pageable);
-        logService.info(String.format("Busca por todos os clientes realizada. Total de registros: %d.", clientes.getTotalElements()));
-        return clientes;
+        return repository.findAll(pageable);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public Cliente atualizar(Cliente origem, Integer id){
        Cliente destino = this.buscarPorId(id);
 
@@ -56,22 +51,13 @@ public class ClienteService {
        atualizarEnderecos(destino, origem);
        atualizarStatus(destino, origem);
 
-       Cliente clienteAtualizado = repository.save(destino);
-        String mensagem = String.format("Cliente ID %d atualizado com sucesso. Nome: %s.",
-                clienteAtualizado.getId(),
-                clienteAtualizado.getNome());
-        logService.info(mensagem);
-
-        return clienteAtualizado;
+       return repository.save(destino);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void deletar(Integer id){
         Cliente clienteParaDeletar = this.buscarPorId(id);
         repository.deleteById(id);
-        String mensagem = String.format("Cliente ID %d (Nome: %s) deletado com sucesso.",
-                id, clienteParaDeletar.getNome());
-        logService.info(mensagem);
     }
 
     private void atualizarDadosBasicos(Cliente destino, Cliente origem) {
@@ -79,7 +65,6 @@ public class ClienteService {
         destino.setCpf(origem.getCpf());
         destino.setEmail(origem.getEmail());
         destino.setTelefone(origem.getTelefone());
-        log.trace("Dados básicos do cliente atualizados.");
     }
 
     private void atualizarEnderecos(Cliente destino, Cliente origem) {

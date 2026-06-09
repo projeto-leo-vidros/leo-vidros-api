@@ -1,0 +1,6 @@
+logging:
+  level:
+    root: WARN
+    com.project.extension: INFO
+    org.hibernate: WARN
+    org.springframework: WARN

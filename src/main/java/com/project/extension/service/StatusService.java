@@ -25,9 +25,7 @@ public class StatusService {
 
     public Status buscarPorTipoAndStatus(String tipo, String nome) {
         return repository.findFirstByTipoAndNome(tipo, nome).orElseThrow(() -> {
-            String mensagem = String.format("Falha na busca: Status do tipo '%s' e nome '%s' não encontrado.", tipo, nome);
-            logService.error(mensagem);
-            log.error(mensagem);
+            log.error("Falha na busca: Status do tipo '{}' e nome '{}' não encontrado.", tipo, nome);
             return new StatusNaoEncontradoException();
         });
     }

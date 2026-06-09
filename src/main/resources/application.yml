@@ -11,7 +11,7 @@ server:
     include-binding-errors: never
     include-stacktrace: never
     include-exception: false
-  forward-headers-strategy: framework
+    forward-headers-strategy: native
 
 spring:
   application:
@@ -21,15 +21,18 @@ spring:
     import: optional:file:env[.properties],optional:file:.env[.properties]
 
   datasource:
-    url: jdbc:mysql://${DB_HOST}:${DB_PORT}/${DB_NAME}?useUnicode=true&characterEncoding=UTF-8&connectionCollation=utf8mb4_unicode_ci
+    url: jdbc:mysql://${DB_HOST}:${DB_PORT}/${DB_NAME}?serverTimezone=America/Sao_Paulo
     username: ${DB_USER}
     password: ${DB_PASS}
     driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      connection-init-sql: "SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci"
 
   flyway:
     enabled: true
     baseline-on-migrate: true
-    baseline-version: 1
+    baseline-version: 0
+    locations: classpath:db/migration
 
   docker:
     compose:
@@ -37,12 +40,23 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: none
+      ddl-auto: validate
     properties:
       hibernate:
         dialect: org.hibernate.dialect.MySQL8Dialect
       jdbc:
         time_zone: UTC
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      timeout: 2000ms
+
+  cache:
+    type: redis
+    # O TTL é definido programaticamente no CacheConfig (RedisCacheManager por cache).
+    # spring.cache.redis.time-to-live é ignorado quando há um RedisCacheManager customizado.
 
   rabbitmq:
     host: ${RABBITMQ_HOST:localhost}
@@ -60,6 +74,24 @@ cors:
 
 jwt:
   secret: ${JWT_SECRET:minha_chave_secreta_padrao_para_dev_123}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: never
+  info:
+    env:
+      enabled: true
+
+info:
+  app:
+    name: Leo Vidros API
+    version: 1.0.0
 
 app:
   environment: ${APP_ENV:development}

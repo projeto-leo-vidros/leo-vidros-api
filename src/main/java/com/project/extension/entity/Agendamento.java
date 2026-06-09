@@ -4,6 +4,9 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.BatchSize;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -15,11 +18,16 @@ import java.util.List;
 @Getter
 @Setter
 @NoArgsConstructor
-public class Agendamento {
+@SQLDelete(sql = "UPDATE agendamento SET ativo = FALSE WHERE id = ?")
+@SQLRestriction("ativo = true")
+public class Agendamento extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
+
+    @Column(nullable = false)
+    private Boolean ativo = true;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "tipo")
@@ -47,6 +55,7 @@ public class Agendamento {
     @JoinColumn(name = "endereco_id")
     private Endereco endereco;
 
+    @BatchSize(size = 25)
     @ManyToMany(cascade = CascadeType.ALL)
     @JoinTable(
             name = "agendamento_funcionario",
@@ -55,6 +64,7 @@ public class Agendamento {
     )
     private List<Funcionario> funcionarios = new ArrayList<>();
 
+    @BatchSize(size = 25)
     @OneToMany(mappedBy = "agendamento", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<AgendamentoProduto> agendamentoProdutos = new ArrayList<>();
 

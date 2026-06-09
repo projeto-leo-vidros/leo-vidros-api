@@ -68,9 +68,7 @@ public class PedidoServicoStrategy implements PedidoStrategy {
         Etapa etapaInicial = etapaService.buscarOuCriarPorTipoENome("PEDIDO", "AGUARDANDO AGENDA DE ORÇAMENTO");
         servico.setEtapa(etapaInicial);
 
-        BigDecimal total = BigDecimal.valueOf(
-                servico.getPrecoBase() != null ? servico.getPrecoBase() : 0.0
-        );
+        BigDecimal total = servico.getPrecoBase() != null ? servico.getPrecoBase() : BigDecimal.ZERO;
         pedido.setValorTotal(total);
         validarReservasDetalheServico(pedido.getItensPedido(), null);
 
@@ -132,23 +130,16 @@ public class PedidoServicoStrategy implements PedidoStrategy {
             String nomeNorm = normalizar(nomeEtapa);
 
             if (nomeNorm.contains("ANALISE DO ORCAMENTO")) {
-                long qtdOrcamentos = orcamentoRepository.countByPedidoIdAndAtivoTrue(origem.getId());
-                if (qtdOrcamentos < 1) {
+                long qtdEmAnalise = orcamentoRepository.countByPedidoIdAndAtivoTrueAndStatusNome(origem.getId(), "EM ANALISE");
+                if (qtdEmAnalise < 1) {
                     throw new RegraNegocioException(
-                            "Para avançar para 'Análise do Orçamento', é necessário ter ao menos um orçamento cadastrado para este pedido.");
+                            "Para avançar para 'Análise do Orçamento', é necessário ter ao menos um orçamento com status 'Em Análise'.");
                 }
-                boolean temAgendamentoOrcamento = antigo.getAgendamentos() != null &&
-                        antigo.getAgendamentos().stream()
-                                .anyMatch(a -> TipoAgendamento.ORCAMENTO.equals(a.getTipoAgendamento()));
-                if (!temAgendamentoOrcamento) {
+            } else if (nomeNorm.contains("AGUARDANDO AGENDA DE SERVICO")) {
+                long qtdAprovados = orcamentoRepository.countByPedidoIdAndAtivoTrueAndStatusNome(origem.getId(), "APROVADO");
+                if (qtdAprovados < 1) {
                     throw new RegraNegocioException(
-                            "Para avançar para 'Análise do Orçamento', é necessário ter ao menos um agendamento de orçamento cadastrado.");
-                }
-            } else if (nomeNorm.contains("ORCAMENTO APROVADO")) {
-                long qtdOrcamentos = orcamentoRepository.countByPedidoIdAndAtivoTrue(origem.getId());
-                if (qtdOrcamentos < 1) {
-                    throw new RegraNegocioException(
-                            "Para avançar para 'Orçamento Aprovado', é necessário ter ao menos um orçamento cadastrado para este pedido.");
+                            "Para avançar para 'Aguardando Agenda de Serviço', é necessário ter ao menos um orçamento aprovado.");
                 }
             } else if (nomeNorm.contains("CONCLUIDO") || nomeNorm.contains("CONCLUÍDO")) {
                 pedidoConclusaoService.validarConclusao(antigo);
@@ -156,6 +147,10 @@ public class PedidoServicoStrategy implements PedidoStrategy {
 
             Etapa etapa = etapaService.buscarPorTipoAndEtapa("PEDIDO", nomeEtapa);
             antigo.setEtapa(etapa);
+
+            if (nomeNorm.contains("ANALISE DO ORCAMENTO")) {
+                sincronizarStatusOrcamento(origem.getId(), "EM ANALISE");
+            }
         }
 
         String nomeStatus = destino.getStatus() != null ? destino.getStatus().getNome() : "ATIVO";
@@ -165,7 +160,7 @@ public class PedidoServicoStrategy implements PedidoStrategy {
         Status status = statusService.buscarOuCriarPorTipoENome("PEDIDO", nomeStatus);
         origem.setStatus(status);
 
-        BigDecimal total = BigDecimal.valueOf(antigo.getPrecoBase() != null ? antigo.getPrecoBase() : 0.0);
+        BigDecimal total = antigo.getPrecoBase() != null ? antigo.getPrecoBase() : BigDecimal.ZERO;
         origem.setValorTotal(total);
 
         antigo.setPedido(origem);
@@ -232,6 +227,19 @@ public class PedidoServicoStrategy implements PedidoStrategy {
                 .toUpperCase()
                 .replace('_', ' ')
                 .trim();
+    }
+
+    private void sincronizarStatusOrcamento(Integer pedidoId, String novoStatusNome) {
+        List<Orcamento> orcamentos = orcamentoRepository.findByPedidoIdAndAtivoTrue(pedidoId);
+        if (orcamentos.isEmpty()) return;
+
+        Status novoStatus = statusService.buscarOuCriarPorTipoENome("ORCAMENTO", novoStatusNome);
+        Orcamento maisRecente = orcamentos.get(orcamentos.size() - 1);
+        String statusAtual = maisRecente.getStatus() != null ? normalizar(maisRecente.getStatus().getNome()) : "";
+        if (!normalizar(novoStatusNome).equals(statusAtual)) {
+            maisRecente.setStatus(novoStatus);
+            orcamentoRepository.save(maisRecente);
+        }
     }
 
     private boolean isAgendamentoBloqueante(String status) {

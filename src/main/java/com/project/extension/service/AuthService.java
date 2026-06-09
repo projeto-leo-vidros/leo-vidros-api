@@ -34,7 +34,6 @@ public class AuthService implements UserDetailsService {
                 usuario.getId(),
                 email);
         logService.success(mensagemSucesso);
-        log.info("Usuário autenticado com sucesso: {}", email);
 
         return new User(
                 usuario.getEmail(),

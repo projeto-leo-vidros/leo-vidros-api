@@ -10,7 +10,7 @@ import lombok.Setter;
 @Getter
 @Setter
 @NoArgsConstructor
-public class Usuario {
+public class Usuario extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -18,6 +18,7 @@ public class Usuario {
 
     private String nome;
     private String email;
+    @Column(columnDefinition = "CHAR(11)")
     private String cpf;
     private String senha;
     private String telefone;

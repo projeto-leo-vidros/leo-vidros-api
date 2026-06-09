@@ -35,13 +35,13 @@ public class OrcamentoService {
     private final ClienteService clienteService;
     private final StatusService statusService;
     private final ServicoService servicoService;
+    private final ServicoProdutoService servicoProdutoService;
     private final LogService logService;
     private final RabbitTemplate rabbitTemplate;
     private final OrcamentoSseService sseService;
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public Orcamento criar(OrcamentoRequestDto request) {
-
         Pedido pedido = pedidoService.buscarPorId(request.pedidoId());
 
         Integer clienteId = request.clienteId() != null
@@ -76,25 +76,28 @@ public class OrcamentoService {
 
         Orcamento salvo = repository.save(orcamento);
 
+        // Somente o orçamento APROVADO reflete na seção de produtos do serviço.
+        // Um orçamento recém-criado normalmente é RASCUNHO/ENVIADO e NÃO sobrescreve a lista.
+        if ("APROVADO".equalsIgnoreCase(statusNome)) {
+            aoAprovarOrcamento(salvo);
+        }
+
         logService.success(String.format(
-                "Orçamento ID %d criado com sucesso. Número: %s, Pedido: %d, Total: %s.",
-                salvo.getId(),
-                salvo.getNumeroOrcamento(),
-                salvo.getPedido().getId(),
-                salvo.getValorTotal()
-        ));
+                "Orçamento ID %d criado. Número: %s, Pedido: %d, Itens: %d, Total: %s.",
+                salvo.getId(), salvo.getNumeroOrcamento(),
+                salvo.getPedido().getId(), salvo.getItens().size(), salvo.getValorTotal()));
 
         return salvo;
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public Orcamento criarEGerarPdf(OrcamentoRequestDto request) {
         Orcamento salvo = criar(request);
         publicarGeracaoPdf(salvo);
         return salvo;
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public Orcamento gerarPdf(Integer id) {
         Orcamento orcamento = buscarPorId(id);
         publicarGeracaoPdf(orcamento);
@@ -102,14 +105,17 @@ public class OrcamentoService {
     }
 
     private void publicarGeracaoPdf(Orcamento orcamento) {
-        sseService.enviarEvento(orcamento.getId(), "GERANDO_ORCAMENTO");
-        sseService.enviarEvento(orcamento.getId(), "GERANDO_PDF");
+        Integer orcamentoId = orcamento.getId();
+        String numero = orcamento.getNumeroOrcamento();
+
+        log.info("[Orçamento] Publicando geração de PDF — id={} numero='{}'", orcamentoId, numero);
+        sseService.enviarEvento(orcamentoId, "GERANDO_ORCAMENTO");
+        sseService.enviarEvento(orcamentoId, "GERANDO_PDF");
 
         OrcamentoMensagemDto mensagem = montarMensagem(orcamento);
         orcamento.setStatusFila(StatusFila.ENVIADO);
         repository.save(orcamento);
 
-        Integer orcamentoId = orcamento.getId();
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCommit() {
@@ -119,40 +125,40 @@ public class OrcamentoService {
                             RabbitMQConfig.ROUTING_KEY,
                             mensagem
                     );
-                    logService.info(String.format(
-                            "Mensagem de geração de PDF publicada na fila para o Orçamento ID %d.", orcamentoId
-                    ));
+                    log.info("[Orçamento] Mensagem publicada no RabbitMQ — id={} numero='{}'", orcamentoId, numero);
                 } catch (Exception e) {
+                    log.error("[Orçamento] Falha ao publicar no RabbitMQ — id={} numero='{}' motivo='{}'",
+                            orcamentoId, numero, e.getMessage(), e);
                     logService.error(String.format(
-                            "Falha ao publicar mensagem no RabbitMQ para Orçamento ID %d: %s",
-                            orcamentoId, e.getMessage()
-                    ));
+                            "Falha ao publicar geração de PDF para Orçamento ID %d: %s", orcamentoId, e.getMessage()));
                     sseService.enviarEvento(orcamentoId, "ERRO");
                 }
             }
         });
     }
 
+    public Optional<Orcamento> buscarPorNumeroOrcamento(String numero) {
+        return repository.findByNumeroOrcamento(numero);
+    }
+
     public Orcamento buscarPorId(Integer id) {
         return repository.findById(id).orElseThrow(() -> {
-            String msg = String.format("Orçamento ID %d não encontrado.", id);
-            logService.error(msg);
+            log.warn("[Orçamento] Não encontrado — id={}", id);
             return new OrcamentoNaoEncontradoException();
         });
     }
 
     public Page<Orcamento> listar(Pageable pageable) {
-        Page<Orcamento> orcamentos = repository.findByAtivoTrueOrderByCreatedAtDesc(pageable);
-        logService.info(String.format("Listagem de orçamentos: %d registros.", orcamentos.getTotalElements()));
-        return orcamentos;
+        return repository.findByAtivoTrueOrderByCreatedAtDesc(pageable);
     }
 
     public Page<Orcamento> listarPorPedido(Integer pedidoId, Pageable pageable) {
         return repository.findByPedidoIdAndAtivoTrue(pedidoId, pageable);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public Orcamento atualizarStatus(Integer id, String statusNome, String pdfPath) {
+        statusNome = normalizarStatus(statusNome);
         Orcamento orcamento = buscarPorId(id);
         Status status = statusService.buscarOuCriarPorTipoENome("ORCAMENTO", statusNome);
         orcamento.setStatus(status);
@@ -168,28 +174,26 @@ public class OrcamentoService {
 
         Orcamento atualizado = repository.save(orcamento);
 
-        logService.info(String.format(
-                "Status do Orçamento ID %d atualizado para '%s'.",
-                id, statusNome
-        ));
-
         String eventoSse = "ERRO".equalsIgnoreCase(statusNome) ? "ERRO" : "FINALIZADO";
         sseService.enviarEvento(id, eventoSse);
 
         if ("ENVIADO".equalsIgnoreCase(statusNome) || "EM ANALISE".equalsIgnoreCase(statusNome)) {
             avancarEtapaSeElegivel(orcamento.getPedido(), "ANÁLISE DO ORÇAMENTO");
         } else if ("APROVADO".equalsIgnoreCase(statusNome)) {
-            avancarEtapaSeElegivel(orcamento.getPedido(), "ORÇAMENTO APROVADO");
+            aoAprovarOrcamento(atualizado);
+            avancarEtapaSeElegivel(orcamento.getPedido(), "AGUARDANDO AGENDA DE SERVIÇO/INSTALAÇÃO");
         }
 
         return atualizado;
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public Orcamento atualizar(Integer id, OrcamentoRequestDto request) {
         Orcamento orcamento = buscarPorId(id);
 
-        ifPresent(request.statusNome(), nome -> {
+        String statusNomeNorm = normalizarStatus(request.statusNome());
+
+        ifPresent(statusNomeNorm, nome -> {
             Status status = statusService.buscarOuCriarPorTipoENome("ORCAMENTO", nome);
             orcamento.setStatus(status);
         });
@@ -206,16 +210,28 @@ public class OrcamentoService {
 
         Orcamento atualizado = repository.save(orcamento);
 
+        boolean statusViraAprovado = "APROVADO".equalsIgnoreCase(statusNomeNorm);
+        boolean orcamentoEstaAprovado = atualizado.getStatus() != null
+                && "APROVADO".equalsIgnoreCase(atualizado.getStatus().getNome());
+
+        // Somente o orçamento APROVADO reflete na seção de produtos do serviço.
+        // Editar os itens de um orçamento já aprovado (sem mudar o status) propaga a alteração.
+        // Quando o status passa a APROVADO neste mesmo request, a sincronização ocorre via aoAprovarOrcamento.
+        if (request.itens() != null && orcamentoEstaAprovado && !statusViraAprovado) {
+            sincronizarServicoProduto(atualizado);
+        }
+
         logService.success(String.format(
                 "Orçamento ID %d atualizado com sucesso.",
                 atualizado.getId()
         ));
 
-        if (request.statusNome() != null) {
-            if ("ENVIADO".equalsIgnoreCase(request.statusNome()) || "EM ANALISE".equalsIgnoreCase(request.statusNome())) {
+        if (statusNomeNorm != null) {
+            if ("ENVIADO".equalsIgnoreCase(statusNomeNorm) || "EM ANALISE".equalsIgnoreCase(statusNomeNorm)) {
                 avancarEtapaSeElegivel(atualizado.getPedido(), "ANÁLISE DO ORÇAMENTO");
-            } else if ("APROVADO".equalsIgnoreCase(request.statusNome())) {
-                avancarEtapaSeElegivel(atualizado.getPedido(), "ORÇAMENTO APROVADO");
+            } else if ("APROVADO".equalsIgnoreCase(statusNomeNorm)) {
+                aoAprovarOrcamento(atualizado);
+                avancarEtapaSeElegivel(atualizado.getPedido(), "AGUARDANDO AGENDA DE SERVIÇO/INSTALAÇÃO");
             }
         }
 
@@ -244,6 +260,14 @@ public class OrcamentoService {
             return itensRequest.stream()
                     .map(this::criarItemOrcamento)
                     .toList();
+        }
+
+        // Fonte única de verdade do pedido de serviço: servico_produto.
+        if (pedido.getServico() != null) {
+            List<OrcamentoItem> itensServico = montarItensDeServicoProduto(pedido.getServico().getId());
+            if (!itensServico.isEmpty()) {
+                return itensServico;
+            }
         }
 
         if (pedido.getItensPedido() == null || pedido.getItensPedido().isEmpty()) {
@@ -275,6 +299,80 @@ public class OrcamentoService {
         return itens;
     }
 
+    private List<OrcamentoItem> montarItensDeServicoProduto(Integer servicoId) {
+        List<OrcamentoItem> itens = new ArrayList<>();
+        int ordem = 1;
+        for (ServicoProduto sp : servicoProdutoService.listarPorServico(servicoId)) {
+            OrcamentoItem item = new OrcamentoItem();
+            item.setProduto(sp.getProduto());
+            item.setDescricao(sp.getProduto() != null && sp.getProduto().getNome() != null
+                    ? sp.getProduto().getNome()
+                    : "Produto do serviço");
+            item.setQuantidade(sp.getQuantidadePlanejada() != null ? sp.getQuantidadePlanejada() : BigDecimal.ZERO);
+            item.setPrecoUnitario(sp.getPrecoUnitario() != null ? sp.getPrecoUnitario() : BigDecimal.ZERO);
+            item.setDesconto(BigDecimal.ZERO);
+            item.setObservacao(sp.getObservacao());
+            item.setOrdem(sp.getOrdem() != null ? sp.getOrdem() : ordem);
+            ordem++;
+            itens.add(item);
+        }
+        return itens;
+    }
+
+    /**
+     * Regra de aprovação exclusiva de orçamento.
+     *
+     * Um pedido pode ter vários orçamentos, mas apenas um pode ficar APROVADO. Ao aprovar um:
+     * 1. Todos os demais orçamentos ativos do mesmo pedido são automaticamente marcados como RECUSADO.
+     * 2. Os produtos do orçamento aprovado passam a refletir na seção de produtos do serviço
+     *    ({@code servico_produto}, fonte única de verdade) — sobrescrevendo qualquer estimativa anterior.
+     */
+    private void aoAprovarOrcamento(Orcamento aprovado) {
+        if (aprovado.getPedido() != null) {
+            Status recusado = statusService.buscarOuCriarPorTipoENome("ORCAMENTO", "RECUSADO");
+            List<Orcamento> irmaos = repository.findByPedidoIdAndAtivoTrue(aprovado.getPedido().getId());
+            for (Orcamento outro : irmaos) {
+                if (outro.getId().equals(aprovado.getId())) {
+                    continue;
+                }
+                String statusAtual = outro.getStatus() != null ? outro.getStatus().getNome() : "";
+                if ("APROVADO".equalsIgnoreCase(statusAtual) || "RECUSADO".equalsIgnoreCase(statusAtual)) {
+                    continue;
+                }
+                outro.setStatus(recusado);
+                repository.save(outro);
+                logService.info(String.format(
+                        "Orçamento ID %d reprovado automaticamente por aprovação do Orçamento ID %d no mesmo pedido.",
+                        outro.getId(), aprovado.getId()));
+            }
+        }
+
+        sincronizarServicoProduto(aprovado);
+    }
+
+    /**
+     * Sincronização reversa: itens do orçamento (com produto vinculado, incluindo extras)
+     * passam a ser a fonte de verdade da seção de produtos do serviço.
+     */
+    private void sincronizarServicoProduto(Orcamento orcamento) {
+        if (orcamento.getPedido() == null || orcamento.getPedido().getServico() == null) {
+            return;
+        }
+
+        Integer servicoId = orcamento.getPedido().getServico().getId();
+        List<ServicoProdutoService.SyncItem> itens = orcamento.getItens().stream()
+                .filter(item -> item.getProduto() != null && item.getProduto().getId() != null)
+                .map(item -> new ServicoProdutoService.SyncItem(
+                        item.getProduto().getId(),
+                        item.getQuantidade(),
+                        item.getPrecoUnitario(),
+                        item.getObservacao()
+                ))
+                .toList();
+
+        servicoProdutoService.sincronizarComProdutos(servicoId, itens);
+    }
+
     private OrcamentoItem criarItemOrcamento(OrcamentoItemRequestDto itemDto) {
         OrcamentoItem item = new OrcamentoItem();
         item.setDescricao(itemDto.descricao());
@@ -292,16 +390,19 @@ public class OrcamentoService {
         return item;
     }
 
+    private String normalizarStatus(String nome) {
+        return nome != null ? nome.replace('_', ' ') : null;
+    }
+
     private <T> void ifPresent(T value, Consumer<T> setter) {
         Optional.ofNullable(value).ifPresent(setter);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void deletar(Integer id) {
         Orcamento orcamento = buscarPorId(id);
         orcamento.setAtivo(false);
         repository.save(orcamento);
-        logService.info(String.format("Orçamento ID %d desativado.", id));
     }
 
     private void avancarEtapaSeElegivel(Pedido pedido, String nomeEtapa) {
@@ -321,7 +422,7 @@ public class OrcamentoService {
 
         List<OrcamentoMensagemDto.ItemMsg> itensMsg = orcamento.getItens().stream()
                 .map(item -> new OrcamentoMensagemDto.ItemMsg(
-                        item.getDescricao(),
+                        item.getDescricao() != null ? item.getDescricao() : "",
                         item.getQuantidade() != null ? item.getQuantidade() : BigDecimal.ZERO,
                         item.getPrecoUnitario() != null ? item.getPrecoUnitario() : BigDecimal.ZERO,
                         item.getDesconto() != null ? item.getDesconto() : BigDecimal.ZERO,
