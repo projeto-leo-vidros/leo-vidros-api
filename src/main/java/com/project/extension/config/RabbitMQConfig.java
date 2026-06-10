@@ -12,12 +12,12 @@ import org.springframework.context.annotation.Configuration;
 public class RabbitMQConfig {
 
     public static final String QUEUE_NAME = "fila.orcamento.pdf";
-    public static final String RESPONSE_QUEUE_NAME = "fila.orcamento.pdf.resposta";
     public static final String DLQ_NAME = "fila.orcamento.pdf.falha";
     public static final String EXCHANGE_NAME = "exchange.leovidros.direct";
     public static final String DLX_NAME = "exchange.leovidros.dlx";
+    // Fanout exchange publicado pelo microserviço de orçamento — todas as instâncias recebem o evento.
+    public static final String RESPONSE_FANOUT_EXCHANGE = "exchange.leovidros.orcamento.resposta.fanout";
     public static final String ROUTING_KEY = "orcamento.gerar";
-    public static final String RESPONSE_ROUTING_KEY = "orcamento.resposta";
     public static final String DEAD_LETTER_ROUTING_KEY = "orcamento.falha";
 
     @Bean
@@ -28,9 +28,12 @@ public class RabbitMQConfig {
                 .build();
     }
 
+    // Fila anônima por instância: auto-delete, não durável, nome gerado pelo broker.
+    // Com 2 app-servers, cada instância recebe uma cópia da resposta via fanout,
+    // garantindo que o SSE emitter (in-memory) sempre seja encontrado.
     @Bean
     public Queue orcamentoResponseQueue() {
-        return new Queue(RESPONSE_QUEUE_NAME, true);
+        return new AnonymousQueue();
     }
 
     @Bean
@@ -49,13 +52,20 @@ public class RabbitMQConfig {
     }
 
     @Bean
+    public FanoutExchange orcamentoResponseFanoutExchange() {
+        return new FanoutExchange(RESPONSE_FANOUT_EXCHANGE, true, false);
+    }
+
+    @Bean
     public Binding orcamentoBinding(Queue orcamentoQueue, DirectExchange leoVidrosExchange) {
         return BindingBuilder.bind(orcamentoQueue).to(leoVidrosExchange).with(ROUTING_KEY);
     }
 
+    // Cada instância cria sua própria fila anônima vinculada ao fanout de respostas.
     @Bean
-    public Binding orcamentoResponseBinding(Queue orcamentoResponseQueue, DirectExchange leoVidrosExchange) {
-        return BindingBuilder.bind(orcamentoResponseQueue).to(leoVidrosExchange).with(RESPONSE_ROUTING_KEY);
+    public Binding orcamentoResponseBinding(Queue orcamentoResponseQueue,
+                                            FanoutExchange orcamentoResponseFanoutExchange) {
+        return BindingBuilder.bind(orcamentoResponseQueue).to(orcamentoResponseFanoutExchange);
     }
 
     @Bean

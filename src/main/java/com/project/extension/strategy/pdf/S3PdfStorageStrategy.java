@@ -86,7 +86,18 @@ public class S3PdfStorageStrategy implements PdfStorageStrategy {
             log.error("Falha ao ler PDF do disco para orçamento {}", numero, e);
         }
 
-        return null;
+        // Disco frio (instância reiniciada ou volume limpo): tenta buscar diretamente no S3.
+        String nomeArquivo = "orcamento_" + numero + ".pdf";
+        byte[] bytes = baixarDoS3(numero, nomeArquivo);
+        if (bytes != null) {
+            cache.put(numero, bytes);
+            try {
+                salvarEmDisco(numero, bytes);
+            } catch (IOException e) {
+                log.warn("PDF recuperado do S3 mas falhou ao salvar em disco para orçamento {}", numero, e);
+            }
+        }
+        return bytes;
     }
 
     private byte[] baixarDoS3(String numero, String nomeArquivo) {
