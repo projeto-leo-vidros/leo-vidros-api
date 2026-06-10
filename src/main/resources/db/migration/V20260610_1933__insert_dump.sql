@@ -115,12 +115,12 @@ UNLOCK TABLES;
 
 LOCK TABLES `categoria` WRITE;
 /*!40000 ALTER TABLE `categoria` DISABLE KEYS */;
-INSERT INTO `categoria` (`id`, `nome`, `created_at`, `updated_at`) VALUES (1,'INFO','2026-06-10 20:22:37','2026-06-10 20:22:37');
-INSERT INTO `categoria` (`id`, `nome`, `created_at`, `updated_at`) VALUES (2,'ERROR','2026-06-10 20:22:37','2026-06-10 20:22:37');
-INSERT INTO `categoria` (`id`, `nome`, `created_at`, `updated_at`) VALUES (3,'DEBUG','2026-06-10 20:22:37','2026-06-10 20:22:37');
-INSERT INTO `categoria` (`id`, `nome`, `created_at`, `updated_at`) VALUES (4,'WARNING','2026-06-10 20:22:37','2026-06-10 20:22:37');
-INSERT INTO `categoria` (`id`, `nome`, `created_at`, `updated_at`) VALUES (5,'SUCCESS','2026-06-10 20:22:37','2026-06-10 20:22:37');
-INSERT INTO `categoria` (`id`, `nome`, `created_at`, `updated_at`) VALUES (6,'FATAL','2026-06-10 20:22:37','2026-06-10 20:22:37');
+INSERT IGNORE INTO `categoria` (`id`, `nome`, `created_at`, `updated_at`) VALUES (1,'INFO','2026-06-10 20:22:37','2026-06-10 20:22:37');
+INSERT IGNORE INTO `categoria` (`id`, `nome`, `created_at`, `updated_at`) VALUES (2,'ERROR','2026-06-10 20:22:37','2026-06-10 20:22:37');
+INSERT IGNORE INTO `categoria` (`id`, `nome`, `created_at`, `updated_at`) VALUES (3,'DEBUG','2026-06-10 20:22:37','2026-06-10 20:22:37');
+INSERT IGNORE INTO `categoria` (`id`, `nome`, `created_at`, `updated_at`) VALUES (4,'WARNING','2026-06-10 20:22:37','2026-06-10 20:22:37');
+INSERT IGNORE INTO `categoria` (`id`, `nome`, `created_at`, `updated_at`) VALUES (5,'SUCCESS','2026-06-10 20:22:37','2026-06-10 20:22:37');
+INSERT IGNORE INTO `categoria` (`id`, `nome`, `created_at`, `updated_at`) VALUES (6,'FATAL','2026-06-10 20:22:37','2026-06-10 20:22:37');
 /*!40000 ALTER TABLE `categoria` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -211,28 +211,15 @@ UNLOCK TABLES;
 
 LOCK TABLES `etapa` WRITE;
 /*!40000 ALTER TABLE `etapa` DISABLE KEYS */;
-INSERT INTO `etapa` (`id`, `tipo`, `nome`, `created_at`, `updated_at`) VALUES (1,'PEDIDO','AGUARDANDO AGENDA DE ORÇAMENTO','2026-06-10 20:22:37','2026-06-10 20:22:37');
-INSERT INTO `etapa` (`id`, `tipo`, `nome`, `created_at`, `updated_at`) VALUES (2,'PEDIDO','ORÇAMENTO AGENDADO','2026-06-10 20:22:37','2026-06-10 20:22:37');
-INSERT INTO `etapa` (`id`, `tipo`, `nome`, `created_at`, `updated_at`) VALUES (3,'PEDIDO','ANÁLISE DO ORÇAMENTO','2026-06-10 20:22:37','2026-06-10 20:22:37');
-INSERT INTO `etapa` (`id`, `tipo`, `nome`, `created_at`, `updated_at`) VALUES (4,'PEDIDO','ORÇAMENTO APROVADO','2026-06-10 20:22:37','2026-06-10 20:22:37');
-INSERT INTO `etapa` (`id`, `tipo`, `nome`, `created_at`, `updated_at`) VALUES (5,'PEDIDO','AGUARDANDO AGENDA DE SERVIÇO/INSTALAÇÃO','2026-06-10 20:22:37','2026-06-10 20:22:37');
-INSERT INTO `etapa` (`id`, `tipo`, `nome`, `created_at`, `updated_at`) VALUES (6,'PEDIDO','SERVIÇO AGENDADO','2026-06-10 20:22:37','2026-06-10 20:22:37');
-INSERT INTO `etapa` (`id`, `tipo`, `nome`, `created_at`, `updated_at`) VALUES (7,'PEDIDO','AGENDAMENTO EM EXECUÇÃO','2026-06-10 20:22:37','2026-06-10 20:22:37');
-INSERT INTO `etapa` (`id`, `tipo`, `nome`, `created_at`, `updated_at`) VALUES (8,'PEDIDO','CONCLUÍDO','2026-06-10 20:22:37','2026-06-10 20:22:37');
+INSERT IGNORE INTO `etapa` (`id`, `tipo`, `nome`, `created_at`, `updated_at`) VALUES (1,'PEDIDO','AGUARDANDO AGENDA DE ORÇAMENTO','2026-06-10 20:22:37','2026-06-10 20:22:37');
+INSERT IGNORE INTO `etapa` (`id`, `tipo`, `nome`, `created_at`, `updated_at`) VALUES (2,'PEDIDO','ORÇAMENTO AGENDADO','2026-06-10 20:22:37','2026-06-10 20:22:37');
+INSERT IGNORE INTO `etapa` (`id`, `tipo`, `nome`, `created_at`, `updated_at`) VALUES (3,'PEDIDO','ANÁLISE DO ORÇAMENTO','2026-06-10 20:22:37','2026-06-10 20:22:37');
+INSERT IGNORE INTO `etapa` (`id`, `tipo`, `nome`, `created_at`, `updated_at`) VALUES (4,'PEDIDO','ORÇAMENTO APROVADO','2026-06-10 20:22:37','2026-06-10 20:22:37');
+INSERT IGNORE INTO `etapa` (`id`, `tipo`, `nome`, `created_at`, `updated_at`) VALUES (5,'PEDIDO','AGUARDANDO AGENDA DE SERVIÇO/INSTALAÇÃO','2026-06-10 20:22:37','2026-06-10 20:22:37');
+INSERT IGNORE INTO `etapa` (`id`, `tipo`, `nome`, `created_at`, `updated_at`) VALUES (6,'PEDIDO','SERVIÇO AGENDADO','2026-06-10 20:22:37','2026-06-10 20:22:37');
+INSERT IGNORE INTO `etapa` (`id`, `tipo`, `nome`, `created_at`, `updated_at`) VALUES (7,'PEDIDO','AGENDAMENTO EM EXECUÇÃO','2026-06-10 20:22:37','2026-06-10 20:22:37');
+INSERT IGNORE INTO `etapa` (`id`, `tipo`, `nome`, `created_at`, `updated_at`) VALUES (8,'PEDIDO','CONCLUÍDO','2026-06-10 20:22:37','2026-06-10 20:22:37');
 /*!40000 ALTER TABLE `etapa` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Dumping data for table `flyway_schema_history`
---
-
-LOCK TABLES `flyway_schema_history` WRITE;
-/*!40000 ALTER TABLE `flyway_schema_history` DISABLE KEYS */;
-INSERT INTO `flyway_schema_history` (`installed_rank`, `version`, `description`, `type`, `script`, `checksum`, `installed_by`, `installed_on`, `execution_time`, `success`) VALUES (1,'20260601.0000','baseline schema','SQL','V20260601_0000__baseline_schema.sql',-872508969,'leo_vidros_user','2026-06-10 20:22:37',1028,1);
-INSERT INTO `flyway_schema_history` (`installed_rank`, `version`, `description`, `type`, `script`, `checksum`, `installed_by`, `installed_on`, `execution_time`, `success`) VALUES (2,'20260601.0100','baseline seed','SQL','V20260601_0100__baseline_seed.sql',-1382804439,'leo_vidros_user','2026-06-10 20:22:37',7,1);
-INSERT INTO `flyway_schema_history` (`installed_rank`, `version`, `description`, `type`, `script`, `checksum`, `installed_by`, `installed_on`, `execution_time`, `success`) VALUES (3,'20260601.0200','create servico produto','SQL','V20260601_0200__create_servico_produto.sql',1051393500,'leo_vidros_user','2026-06-10 20:22:37',40,1);
-INSERT INTO `flyway_schema_history` (`installed_rank`, `version`, `description`, `type`, `script`, `checksum`, `installed_by`, `installed_on`, `execution_time`, `success`) VALUES (4,'20260609.2032','dump','SQL','V20260609_2032__dump.sql',796451739,'leo_vidros_user','2026-06-10 20:22:37',4,1);
-/*!40000 ALTER TABLE `flyway_schema_history` ENABLE KEYS */;
 UNLOCK TABLES;
 
 --
@@ -696,22 +683,22 @@ UNLOCK TABLES;
 
 LOCK TABLES `status` WRITE;
 /*!40000 ALTER TABLE `status` DISABLE KEYS */;
-INSERT INTO `status` (`id`, `tipo`, `nome`, `created_at`, `updated_at`) VALUES (1,'AGENDAMENTO','PENDENTE','2026-06-10 20:22:37','2026-06-10 20:22:37');
-INSERT INTO `status` (`id`, `tipo`, `nome`, `created_at`, `updated_at`) VALUES (2,'AGENDAMENTO','EM ANDAMENTO','2026-06-10 20:22:37','2026-06-10 20:22:37');
-INSERT INTO `status` (`id`, `tipo`, `nome`, `created_at`, `updated_at`) VALUES (3,'AGENDAMENTO','CONCLUÍDO','2026-06-10 20:22:37','2026-06-10 20:22:37');
-INSERT INTO `status` (`id`, `tipo`, `nome`, `created_at`, `updated_at`) VALUES (4,'AGENDAMENTO','CANCELADO','2026-06-10 20:22:37','2026-06-10 20:22:37');
-INSERT INTO `status` (`id`, `tipo`, `nome`, `created_at`, `updated_at`) VALUES (5,'PEDIDO','ATIVO','2026-06-10 20:22:37','2026-06-10 20:22:37');
-INSERT INTO `status` (`id`, `tipo`, `nome`, `created_at`, `updated_at`) VALUES (6,'PEDIDO','INATIVO','2026-06-10 20:22:37','2026-06-10 20:22:37');
-INSERT INTO `status` (`id`, `tipo`, `nome`, `created_at`, `updated_at`) VALUES (7,'PEDIDO','CANCELADO','2026-06-10 20:22:37','2026-06-10 20:22:37');
-INSERT INTO `status` (`id`, `tipo`, `nome`, `created_at`, `updated_at`) VALUES (8,'SOLICITACAO','PENDENTE','2026-06-10 20:22:37','2026-06-10 20:22:37');
-INSERT INTO `status` (`id`, `tipo`, `nome`, `created_at`, `updated_at`) VALUES (9,'SOLICITACAO','ACEITO','2026-06-10 20:22:37','2026-06-10 20:22:37');
-INSERT INTO `status` (`id`, `tipo`, `nome`, `created_at`, `updated_at`) VALUES (10,'SOLICITACAO','RECUSADO','2026-06-10 20:22:37','2026-06-10 20:22:37');
-INSERT INTO `status` (`id`, `tipo`, `nome`, `created_at`, `updated_at`) VALUES (11,'ORCAMENTO','RASCUNHO','2026-06-10 20:22:37','2026-06-10 20:22:37');
-INSERT INTO `status` (`id`, `tipo`, `nome`, `created_at`, `updated_at`) VALUES (12,'ORCAMENTO','ENVIADO','2026-06-10 20:22:37','2026-06-10 20:22:37');
-INSERT INTO `status` (`id`, `tipo`, `nome`, `created_at`, `updated_at`) VALUES (13,'ORCAMENTO','EM ANALISE','2026-06-10 20:22:37','2026-06-10 20:22:37');
-INSERT INTO `status` (`id`, `tipo`, `nome`, `created_at`, `updated_at`) VALUES (14,'ORCAMENTO','APROVADO','2026-06-10 20:22:37','2026-06-10 20:22:37');
-INSERT INTO `status` (`id`, `tipo`, `nome`, `created_at`, `updated_at`) VALUES (15,'ORCAMENTO','RECUSADO','2026-06-10 20:22:37','2026-06-10 20:22:37');
-INSERT INTO `status` (`id`, `tipo`, `nome`, `created_at`, `updated_at`) VALUES (16,'ORCAMENTO','EXPIRADO','2026-06-10 20:22:37','2026-06-10 20:22:37');
+INSERT IGNORE INTO `status` (`id`, `tipo`, `nome`, `created_at`, `updated_at`) VALUES (1,'AGENDAMENTO','PENDENTE','2026-06-10 20:22:37','2026-06-10 20:22:37');
+INSERT IGNORE INTO `status` (`id`, `tipo`, `nome`, `created_at`, `updated_at`) VALUES (2,'AGENDAMENTO','EM ANDAMENTO','2026-06-10 20:22:37','2026-06-10 20:22:37');
+INSERT IGNORE INTO `status` (`id`, `tipo`, `nome`, `created_at`, `updated_at`) VALUES (3,'AGENDAMENTO','CONCLUÍDO','2026-06-10 20:22:37','2026-06-10 20:22:37');
+INSERT IGNORE INTO `status` (`id`, `tipo`, `nome`, `created_at`, `updated_at`) VALUES (4,'AGENDAMENTO','CANCELADO','2026-06-10 20:22:37','2026-06-10 20:22:37');
+INSERT IGNORE INTO `status` (`id`, `tipo`, `nome`, `created_at`, `updated_at`) VALUES (5,'PEDIDO','ATIVO','2026-06-10 20:22:37','2026-06-10 20:22:37');
+INSERT IGNORE INTO `status` (`id`, `tipo`, `nome`, `created_at`, `updated_at`) VALUES (6,'PEDIDO','INATIVO','2026-06-10 20:22:37','2026-06-10 20:22:37');
+INSERT IGNORE INTO `status` (`id`, `tipo`, `nome`, `created_at`, `updated_at`) VALUES (7,'PEDIDO','CANCELADO','2026-06-10 20:22:37','2026-06-10 20:22:37');
+INSERT IGNORE INTO `status` (`id`, `tipo`, `nome`, `created_at`, `updated_at`) VALUES (8,'SOLICITACAO','PENDENTE','2026-06-10 20:22:37','2026-06-10 20:22:37');
+INSERT IGNORE INTO `status` (`id`, `tipo`, `nome`, `created_at`, `updated_at`) VALUES (9,'SOLICITACAO','ACEITO','2026-06-10 20:22:37','2026-06-10 20:22:37');
+INSERT IGNORE INTO `status` (`id`, `tipo`, `nome`, `created_at`, `updated_at`) VALUES (10,'SOLICITACAO','RECUSADO','2026-06-10 20:22:37','2026-06-10 20:22:37');
+INSERT IGNORE INTO `status` (`id`, `tipo`, `nome`, `created_at`, `updated_at`) VALUES (11,'ORCAMENTO','RASCUNHO','2026-06-10 20:22:37','2026-06-10 20:22:37');
+INSERT IGNORE INTO `status` (`id`, `tipo`, `nome`, `created_at`, `updated_at`) VALUES (12,'ORCAMENTO','ENVIADO','2026-06-10 20:22:37','2026-06-10 20:22:37');
+INSERT IGNORE INTO `status` (`id`, `tipo`, `nome`, `created_at`, `updated_at`) VALUES (13,'ORCAMENTO','EM ANALISE','2026-06-10 20:22:37','2026-06-10 20:22:37');
+INSERT IGNORE INTO `status` (`id`, `tipo`, `nome`, `created_at`, `updated_at`) VALUES (14,'ORCAMENTO','APROVADO','2026-06-10 20:22:37','2026-06-10 20:22:37');
+INSERT IGNORE INTO `status` (`id`, `tipo`, `nome`, `created_at`, `updated_at`) VALUES (15,'ORCAMENTO','RECUSADO','2026-06-10 20:22:37','2026-06-10 20:22:37');
+INSERT IGNORE INTO `status` (`id`, `tipo`, `nome`, `created_at`, `updated_at`) VALUES (16,'ORCAMENTO','EXPIRADO','2026-06-10 20:22:37','2026-06-10 20:22:37');
 /*!40000 ALTER TABLE `status` ENABLE KEYS */;
 UNLOCK TABLES;
 
